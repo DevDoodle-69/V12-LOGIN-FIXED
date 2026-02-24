@@ -125,7 +125,7 @@ module.exports = {
     const imagesDir = path.join(__dirname, "images");
     await this.autoCleanup(imagesDir);
 
-    const BEARER = "sk-paxsenix-WaX9UfZU1ti8w3Huao8J5a10pL55wkWhgVKql79ZEsETtUkP";
+    const BEARER = "sk-paxsenix-Wb6nXF-6jiNjPjMJYFbawnfbED0_xY_baG0wyLTERmPLGU7H";
     const endpoint = "https://api.paxsenix.org/ai-image/nano-banana";
 
     const buffers = [];
