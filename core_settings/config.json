@@ -1,0 +1,26 @@
+{
+  "bot": {
+    "prefix": "^",
+    "listenEvents": false,
+    "selfListen": true,
+    "forceLogin": true,
+    "botName": "V12",
+    "ownerName": "NZ R",
+    "ownerUid": ["100091084029785","100068746523561"],
+    "adminUids": [
+      "100091084029785","100068746523561"
+    ],
+    "login": {
+      "username": "rudropubglover@gmail.com",
+      "password": "Nehal@10"
+    }
+  },
+  "logging": {
+    "level": "info"
+  },
+  "retries": {
+    "maxRetries": 3,
+    "retryDelay": 5000
+  },
+  "language": "en"
+}
