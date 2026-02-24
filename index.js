@@ -54,28 +54,8 @@ async function initializeThreadsAndUsers(api) {
         for (const thread of threadList) {
             if (!thread || !thread.threadID) continue;
             threads.add(thread.threadID);
-            try {
-                const info = await new Promise((resolve, reject) => {
-                    api.getThreadInfo(thread.threadID, (err, info) => {
-                        if (err) reject(err);
-                        else resolve(info);
-                    });
-                }).catch(() => null);
-
-                if (info && info.participantIDs) {
-                    for (const userId of info.participantIDs) {
-                        if (!userId) continue;
-                        users.add(userId);
-                        await usersCollection.updateOne(
-                            { userId },
-                            { $set: { lastActive: new Date() }, $setOnInsert: { balance: 0, banned: false } },
-                            { upsert: true }
-                        ).catch(e => logger.error(`DB update error for user ${userId}: ${e.message}`));
-                    }
-                }
-            } catch (err) {
-                logger.error(`[ERROR] Pathway error ${thread.threadID}: ${err.message}`);
-            }
+            // Skip detailed thread info fetch to avoid potential crashes in getThreadInfo
+            // Users will be added to DB when they send messages
         }
         
         logger.info(`Network initialized: ${threads.size} pathways, ${users.size} nodes`);
