@@ -29,8 +29,23 @@ author = "agent"
 task = "workflow.run"
 args = "Start Bot"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start Bot (Professional)"
+
 [[workflows.workflow]]
 name = "Start Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node index.js"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Start Bot (Professional)"
 author = "agent"
 
 [[workflows.workflow.tasks]]
