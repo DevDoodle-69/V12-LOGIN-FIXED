@@ -154,13 +154,13 @@ module.exports = {
       });
 
       if (!res.data.ok || !res.data.jobId || !res.data.task_url) {
-        return api.editMessage("API rejected request.", waiting.messageID, threadID);
+        return api.editMessage("API rejected request.", waiting.messageID);
       }
 
       const taskUrl = res.data.task_url;
       const jobId = res.data.jobId;
 
-      await api.editMessage(`Job submitted: ${jobId}`, waiting.messageID, threadID);
+      await api.editMessage(`Job submitted: ${jobId}`, waiting.messageID);
 
       let taskData = null;
       let attempts = 0;
@@ -180,8 +180,7 @@ module.exports = {
           if (data.ok && data.status === "failed") {
             return api.editMessage(
               "Generation failed on server.",
-              waiting.messageID,
-              threadID
+              waiting.messageID
             );
           }
         } catch (e) {
@@ -191,8 +190,7 @@ module.exports = {
         if (attempts % 12 === 0) {
           await api.editMessage(
             `Still generating... (~${Math.round((attempts * 5) / 60)} min elapsed)`,
-            waiting.messageID,
-            threadID
+            waiting.messageID
           );
         }
       }
@@ -200,8 +198,7 @@ module.exports = {
       if (!taskData) {
         return api.editMessage(
           "Timed out after 10 minutes or server error (524). Try again later.",
-          waiting.messageID,
-          threadID
+          waiting.messageID
         );
       }
 

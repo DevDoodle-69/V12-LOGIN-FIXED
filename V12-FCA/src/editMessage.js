@@ -48,7 +48,7 @@ module.exports = function (defaultFuncs, api, ctx) {
             app_id: '2220391788200892',
             payload: {
                 data_trace_id: null,
-                epoch_id: parseInt(generateOfflineThreadingId),
+                epoch_id: parseInt(generateOfflineThreadingId()),
                 tasks: [query],
                 version_id: '6903494529735864'
             },
@@ -59,7 +59,7 @@ module.exports = function (defaultFuncs, api, ctx) {
         context.payload = JSON.stringify(context.payload);
 
         // if (canBeCalled(callback)) {
-        // 	ctx.reqCallbacks[ctx.wsReqNumber] = callback;
+        //      ctx.reqCallbacks[ctx.wsReqNumber] = callback;
         // }
 
         ctx.mqttClient.publish('/ls_req', JSON.stringify(context), {

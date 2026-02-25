@@ -72,11 +72,11 @@ module.exports = {
       });
 
       if (!createRes.data.status) {
-        return api.editMessage(`Error: ${createRes.data.message || "Failed to create task"}`, waiting.messageID, threadID);
+        return api.editMessage(`Error: ${createRes.data.message || "Failed to create task"}`, waiting.messageID);
       }
 
       const { taskId, pollUrl } = createRes.data.data;
-      await api.editMessage(`Task created ID: ${taskId} processing`, waiting.messageID, threadID);
+      await api.editMessage(`Task created ID: ${taskId} processing`, waiting.messageID);
 
       let resultVideo = null;
       let attempts = 0;
@@ -99,7 +99,7 @@ module.exports = {
         throw new Error("Polling timed out");
       }
 
-      await api.editMessage("Downloading video", waiting.messageID, threadID);
+      await api.editMessage("Downloading video", waiting.messageID);
 
       const videoPath = path.join(tempDir, `sora2_${Date.now()}.mp4`);
       const writer = fs.createWriteStream(videoPath);
