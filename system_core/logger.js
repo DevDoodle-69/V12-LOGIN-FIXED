@@ -1,4 +1,5 @@
 const chalk = require('chalk');
+const gradient = require('gradient-string');
 const config = require('../core_settings/config.json');
 const Table = require('cli-table3');
 const stringWidth = require('string-width');
@@ -14,25 +15,25 @@ const logLevels = {
 const currentLevel = logLevels[config.logging.level] || logLevels.info;
 
 const asciiArt = `
-██╗   ██╗ ██╗██████╗       ███╗   ██╗███████╗    ██████╗ 
-██║   ██║███║╚════██╗      ████╗  ██║╚══███╔╝    ██╔══██╗
-██║   ██║╚██║ █████╔╝█████╗██╔██╗ ██║  ███╔╝     ██████╔╝
-╚██╗ ██╔╝ ██║██╔═══╝ ╚════╝██║╚██╗██║ ███╔╝      ██╔══██╗
- ╚████╔╝  ██║███████╗      ██║ ╚████║███████╗    ██║  ██║
-  ╚═══╝   ╚═╝╚══════╝      ╚═╝  ╚═══╝╚══════╝    ╚═╝  ╚═╝
+ ██╗   ██╗ ██╗██████╗         ███╗   ██╗███████╗    ██████╗ 
+ ██║   ██║███║╚════██╗        ████╗  ██║╚══███╔╝    ██╔══██╗
+ ██║   ██║╚██║ █████╔╝█████╗  ██╔██╗ ██║  ███╔╝     ██████╔╝
+ ╚██╗ ██╔╝ ██║██╔═══╝ ╚════╝  ██║╚██╗██║ ███╔╝      ██╔══██╗
+  ╚████╔╝  ██║███████╗        ██║ ╚████║███████╗    ██║  ██║
+   ╚═══╝   ╚═╝╚══════╝        ╚═╝  ╚═══╝╚══════╝    ╚═╝  ╚═╝
 `;
 
 const colors = {
-  primary: chalk.white,
-  secondary: chalk.white,
-  success: chalk.white,
-  warning: chalk.white,
-  error: chalk.white,
-  info: chalk.white,
+  primary: chalk.cyan.bold,
+  secondary: chalk.magenta,
+  success: chalk.green,
+  warning: chalk.yellow,
+  error: chalk.red,
+  info: chalk.blue,
   verbose: chalk.gray,
-  timestamp: chalk.white,
-  border: chalk.white,
-  header: chalk.white
+  timestamp: chalk.white.dim,
+  border: chalk.blueBright,
+  header: chalk.cyan
 };
 
 const levelColors = {
@@ -64,17 +65,25 @@ function formatTimestamp() {
 }
 
 function displayStartupBanner() {
-  const width = Math.min(getTerminalWidth(), 80);
+  const terminalWidth = getTerminalWidth();
+  const width = Math.min(terminalWidth, 80);
   
-  console.log('\n' + centerText(colors.primary(asciiArt), width));
+  // Responsive ASCII scaling: If terminal is too small, use a simpler version or scale down
+  let displayArt = asciiArt;
+  if (terminalWidth < 60) {
+    displayArt = 'V12 - NZ - R';
+  }
+
+  console.log('\n' + centerText(gradient.pastel.multiline(displayArt), terminalWidth));
   
-  const hr = colors.header('═'.repeat(width - 4));
-  console.log(centerText(hr, width));
+  const hr = colors.border('━'.repeat(Math.max(0, width - 4)));
+  console.log(centerText(hr, terminalWidth));
   
-  console.log(centerText(colors.info('A simple Facebook Messenger Chat Robot'), width));
-  console.log(centerText(colors.secondary('Made With ♡ by NZ R'), width));
+  console.log(centerText(colors.info('✨ A sophisticated Facebook Messenger System ✨'), terminalWidth));
+  console.log(centerText(colors.secondary('Crafted with Passion by NZ R'), terminalWidth));
+  console.log(centerText(colors.success('Status: Operational | Version: 1.2.0'), terminalWidth));
   
-  console.log(centerText(hr, width) + '\n');
+  console.log(centerText(hr, terminalWidth) + '\n');
 }
 
 function formatMessageLog(context, senderName, senderId, message, threadId, groupName, messageType = 'TEXT', mediaUrl = null) {
