@@ -24,16 +24,16 @@ const asciiArt = `
 `;
 
 const colors = {
-  primary: chalk.cyan.bold,
-  secondary: chalk.magenta,
-  success: chalk.green,
-  warning: chalk.yellow,
-  error: chalk.red,
-  info: chalk.blue,
+  primary: chalk.white,
+  secondary: chalk.white,
+  success: chalk.white,
+  warning: chalk.white,
+  error: chalk.white,
+  info: chalk.white,
   verbose: chalk.gray,
-  timestamp: chalk.white.dim,
-  border: chalk.blueBright,
-  header: chalk.cyan
+  timestamp: chalk.white,
+  border: chalk.white,
+  header: chalk.white
 };
 
 const levelColors = {
@@ -68,20 +68,13 @@ function displayStartupBanner() {
   const terminalWidth = getTerminalWidth();
   const width = Math.min(terminalWidth, 80);
   
-  // Responsive ASCII scaling: If terminal is too small, use a simpler version or scale down
-  let displayArt = asciiArt;
-  if (terminalWidth < 60) {
-    displayArt = 'V12 - NZ - R';
-  }
-
-  console.log('\n' + centerText(gradient.pastel.multiline(displayArt), terminalWidth));
+  console.log('\n' + centerText(asciiArt, terminalWidth));
   
-  const hr = colors.border('━'.repeat(Math.max(0, width - 4)));
+  const hr = colors.border('═'.repeat(Math.max(0, width - 4)));
   console.log(centerText(hr, terminalWidth));
   
-  console.log(centerText(colors.info('✨ A sophisticated Facebook Messenger System ✨'), terminalWidth));
-  console.log(centerText(colors.secondary('Crafted with Passion by NZ R'), terminalWidth));
-  console.log(centerText(colors.success('Status: Operational | Version: 1.2.0'), terminalWidth));
+  console.log(centerText(colors.info('A simple Facebook Messenger Chat Robot'), terminalWidth));
+  console.log(centerText(colors.secondary('Made With ♡ by NZ R'), terminalWidth));
   
   console.log(centerText(hr, terminalWidth) + '\n');
 }
