@@ -5,13 +5,13 @@ const sharp = require("sharp");
 
 module.exports = {
   config: {
-    name: "nbpro",
+    name: "nbpro2",
     aliases: [],
     version: "1.3",
     author: "NZ R",
     countDown: 5,
     role: 0,
-    shortDescription: { en: "Nano Banana Pro AI images" },
+    shortDescription: { en: "Nano Banana Pro 2 AI images" },
     longDescription: { en: "Generate nano-banana-pro images" },
     category: "AI",
     guide: { en: "{prefix}nbpro <prompt> --ar 1:1|16:9|9:16 --num 1-4" }
@@ -126,7 +126,7 @@ module.exports = {
     await this.autoCleanup(imagesDir);
 
     const BEARER = "sk-paxsenix-Wb6nXF-6jiNjPjMJYFbawnfbED0_xY_baG0wyLTERmPLGU7H";
-    const endpoint = "https://api.paxsenix.org/ai-image/nano-banana";
+    const endpoint = "https://api.paxsenix.org/ai-image/nano-banana-2";
 
     const buffers = [];
     const files = [];
