@@ -5,7 +5,7 @@ const sharp = require("sharp");
 
 module.exports = {
   config: {
-    name: "img4",
+    name: "alpha",
     aliases: [],
     version: "2.0",
     author: "NZ R",

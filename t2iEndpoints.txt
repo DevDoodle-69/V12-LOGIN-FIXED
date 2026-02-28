@@ -1,0 +1,159 @@
+# API Endpoints Documentation
+
+This file contains documentation and code examples for the APIs used in the Flux AI Pro project.
+
+## Base URL
+All internal endpoints are hosted at: `https://koy.xx.kg`
+
+---
+
+## 1. Image Generation API
+Generates images using various AI models and providers.
+
+### Endpoint
+`POST /_internal/generate`
+
+### Request Body (JSON)
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `prompt` | String | The text description c the image. |
+| `model` | String | Model ID (e.g., `flux-2-dev`, `klein-large`, `nanobanana`). |
+| `width` | Integer | Image width (e.g., 1024). |
+| `height` | Integer | Image height (e.g., 1024). |
+| `seed` | Integer | Random seed (-1 for random). |
+| `style` | String | Style preset key (e.g., `anime`, `photorealistic`). |
+| `negative_prompt` | String | What to avoid in the image. |
+| `provider` | String | Provider key (`koy`, `infip`, `aqua`, `kinai`, `airforce`, `kaai`). |
+| `nsfw` | Boolean | Enable/Disable NSFW (Supported by some providers). |
+| `n` | Integer | Number of images to generate (Batch size). |
+
+### Example Code (JavaScript)
+```javascript
+async function generateImage() {
+    const response = await fetch('https://koy.xx.kg/_internal/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            prompt: "A futuristic city in neon rain",
+            model: "flux-2-dev",
+            width: 1024,
+            height: 1024,
+            seed: -1,
+            style: "cyberpunk",
+            provider: "koy",
+            n: 1
+        })
+    });
+
+    if (response.headers.get('content-type').startsWith('image/')) {
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        console.log("Image Generated:", imageUrl);
+    } else {
+        const data = await response.json();
+        console.log("Batch Results:", data.data);
+    }
+}
+```
+
+---
+
+## 2. AI Prompt Generator API
+Enhances a simple prompt into a professional, detailed version using AI (Pollinations/Gemini).
+
+### Endpoint
+`POST /api/generate-prompt`
+
+### Request Body (JSON)
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `input` | String | The basic user prompt. |
+| `style` | String | Desired art style. |
+| `imageUrl` | String | (Optional) URL of a reference image to describe. |
+
+### Example Code (JavaScript)
+```javascript
+async function improvePrompt() {
+    const response = await fetch('https://koy.xx.kg/api/generate-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            input: "cat in space",
+            style: "cinematic",
+            imageUrl: "https://example.com/image.png"
+        })
+    });
+    const data = await response.json();
+    if (data.success) {
+        console.log("Improved Prompt:", data.prompt);
+    }
+}
+```
+
+---
+
+## 3. Image Upload Feature
+Uploads an image to the server to get a public URL for use in other APIs.
+
+### Endpoint
+`POST /api/upload`
+
+### Request Body (FormData)
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `fileToUpload` | File | The image file (Max 32MB). |
+
+### Example Code (JavaScript)
+```javascript
+async function uploadImage(file) {
+    const formData = new FormData();
+    formData.append('fileToUpload', file);
+
+    const response = await fetch('https://koy.xx.kg/api/upload', {
+        method: 'POST',
+        body: formData
+    });
+    const data = await response.json();
+    console.log("Uploaded Image URL:", data.url);
+}
+```
+
+---
+
+## 4. Queue Status API
+Checks the current server load and waiting times for different providers.
+
+### Endpoint
+`GET /api/queue-status`
+
+### Example Code (JavaScript)
+```javascript
+async function getStatus() {
+    const response = await fetch('https://koy.xx.kg/api/queue-status');
+    const data = await response.json();
+    console.log("Queue Info:", data.queues);
+}
+```
+
+---
+
+## Reference Data
+
+### Available Models (Partial List)
+- `flux-2-dev`: High-quality Flux model.
+- `nanobanana`: Fast, optimized model.
+- `klein-large`: Advanced 9B parameter model.
+- `flux-schnell`: Ultra-fast generation.
+- `imagen-4`: Google's high-fidelity model (Aqua provider).
+
+### Popular Styles
+- `none`, `photorealistic`, `anime`, `3d-render`, `cyberpunk`, `manga`, `oil-painting`, `watercolor`, `sketch`, `pixel-art`, `cinematic`.
+
+### Common Aspect Ratios
+- `1:1`: 1024x1024
+- `4:5`: 1080x1350
+- `9:16`: 1080x1920
+- `16:9`: 1920x1080
+- `21:9`: 2048x858
+- `2K`: 2048x2048
+- `4K`: 4096x4096

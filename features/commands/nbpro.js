@@ -5,13 +5,13 @@ const sharp = require("sharp");
 
 module.exports = {
   config: {
-    name: "nbpro",
-    aliases: ["nbpro2"],
+    name: "nbpro2",
+    aliases: [],
     version: "1.3",
     author: "NZ R",
     countDown: 5,
     role: 0,
-    shortDescription: { en: "Nano Banana Pro 2 AI images" },
+    shortDescription: { en: "Nano Banana Pro AI images" },
     longDescription: { en: "Generate nano-banana-pro images" },
     category: "AI",
     guide: { en: "{prefix}nbpro <prompt> --ar 1:1|16:9|9:16 --num 1-4" }
@@ -32,6 +32,22 @@ module.exports = {
         try { fs.unlinkSync(p); } catch {}
       }
     }
+  },
+
+  async poll(taskUrl, bearer) {
+    const start = Date.now();
+    while (Date.now() - start < 90000) {
+      const r = await axios.get(taskUrl, {
+        headers: { Authorization: `Bearer ${bearer}` },
+        timeout: 20000
+      });
+      if (r.data.status === "done" && r.data.image_urls?.length) {
+        return r.data.image_urls[0];
+      }
+      if (r.data.status === "failed") throw new Error("failed");
+      await new Promise(r => setTimeout(r, 3000));
+    }
+    throw new Error("timeout");
   },
 
   async process(buf, meta, w, h) {
@@ -64,6 +80,10 @@ module.exports = {
     const index = parseInt(event.body) - 1;
     if (isNaN(index) || index < 0 || index >= buffers.length) {
       return api.sendMessage("Invalid selection.", threadID, messageID);
+    }
+
+    if (suggestionMsgID) {
+      // UnsendMessage removed to keep combined image available
     }
 
     const imagesDir = path.join(__dirname, "images");
@@ -105,10 +125,11 @@ module.exports = {
     const imagesDir = path.join(__dirname, "images");
     await this.autoCleanup(imagesDir);
 
-    const BEARER = "sk-paxsenix-Tjc1kgE9keNVFcoHEhINEQZcl9EnzyXNg8oe72834wIbaMOX";
+    const BEARER = "sk-paxsenix-Wb6nXF-6jiNjPjMJYFbawnfbED0_xY_baG0wyLTERmPLGU7H";
     const endpoint = "https://api.paxsenix.org/ai-image/nano-banana";
 
     const buffers = [];
+    const files = [];
 
     try {
       for (let i = 0; i < num; i++) {
@@ -118,39 +139,14 @@ module.exports = {
           timeout: 60000
         });
 
-        const taskUrl = r.data.task_url;
-        const startPoll = Date.now();
-        let imgUrl = null;
-
-        while (Date.now() - startPoll < 90000) {
-          const pollRes = await axios.get(taskUrl, {
-            headers: { Authorization: `Bearer ${BEARER}` },
-            timeout: 20000
-          });
-
-          if (pollRes.data && typeof pollRes.data === "string" && pollRes.data.startsWith("http")) {
-            imgUrl = pollRes.data;
-            break;
-          }
-          if (pollRes.data.status === "done" && pollRes.data.image_urls?.length) {
-            imgUrl = pollRes.data.image_urls[0];
-            break;
-          }
-          if (pollRes.data.status === "failed") break;
-          await new Promise(r => setTimeout(r, 3000));
-        }
-
-        if (!imgUrl) continue;
-
+        const imgUrl = await this.poll(r.data.task_url, BEARER);
         const img = await axios.get(imgUrl, { responseType: "arraybuffer" });
         buffers.push(Buffer.from(img.data));
       }
 
-      if (buffers.length === 0) return;
-
       let output;
 
-      if (buffers.length === 1) {
+      if (num === 1) {
         output = buffers[0];
         const outPath = path.join(imagesDir, `${Date.now()}.png`);
         fs.writeFileSync(outPath, output);
@@ -166,10 +162,10 @@ module.exports = {
         const metas = await Promise.all(buffers.map(b => sharp(b).metadata()));
         const processed = await Promise.all(buffers.map((b, i) => this.process(b, metas[i], cw, ch)));
         output = await this.grid(processed, cw * 2, ch * 2, cw, ch);
-        
+
         const outPath = path.join(imagesDir, `${Date.now()}.png`);
         fs.writeFileSync(outPath, output);
-        
+
         return api.sendMessage(
           { body: "", attachment: fs.createReadStream(outPath) },
           threadID,
