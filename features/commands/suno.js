@@ -1,5 +1,4 @@
-
- const axios = require("axios");
+const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
@@ -38,8 +37,8 @@ module.exports = {
     category: "MUSIC",
     guide: {
       en:
-        "{prefix}suno Title | Style | Lyrics [--V3|--V3_5|--V4|--V4_5|--V4_5PLUS|--V5]\n" +
-        "{prefix}suno AI <prompt> [--V3|--V3_5|--V4|--V4_5|--V4_5PLUS|--V5]"
+        "{prefix}suno Title | Style | Lyrics [--model]\n" +
+        "{prefix}suno AI <prompt> [--model]\nAvailable models: --V3 --V3_5 --V4 --V4_5 --V4_5PLUS --V5\nRandom model if not specified."
     }
   },
 
@@ -67,100 +66,38 @@ module.exports = {
     }
 
     const subCommand = cleanArgs[0]?.toLowerCase();
-
-    let payload = {
-      model,
-      customMode: true,
-      instrumental: false,
-      title: "",
-      style: "",
-      prompt: ""
-    };
+    let payload = { model, customMode: true, instrumental: false, title: "", style: "", prompt: "" };
 
     if (subCommand === "ai") {
       const prompt = cleanArgs.slice(1).join(" ").trim();
-      if (!prompt)
-        return api.sendMessage("Usage: suno AI <prompt> [--model]", threadID, messageID);
-      if (prompt.length > 400)
-        return api.sendMessage("Prompt too long (max 400 chars).", threadID, messageID);
-
-      payload = {
-        model,
-        customMode: false,
-        instrumental: false,
-        title: "",
-        style: "",
-        prompt
-      };
+      if (!prompt) return api.sendMessage("Usage: suno AI <prompt> [--model]", threadID, messageID);
+      payload = { model, customMode: false, instrumental: false, title: "", style: "", prompt };
     } else {
       const inputString = cleanArgs.join(" ");
-      if (!inputString.includes("|"))
-        return api.sendMessage(
-          "Usage: suno Title | Style | Lyrics [--model]",
-          threadID,
-          messageID
-        );
+      if (!inputString.includes("|")) return api.sendMessage("Usage: suno Title | Style | Lyrics [--model]", threadID, messageID);
 
       const parts = inputString.split("|").map(p => p.trim());
       const title = parts[0] || "";
       const style = parts[1] || "";
       const prompt = parts.slice(2).join("|").trim();
 
-      if (!title || !style || !prompt)
-        return api.sendMessage(
-          "Title, Style and Lyrics required.\nUsage: suno Title | Style | Lyrics [--model]",
-          threadID,
-          messageID
-        );
+      if (!title || !style || !prompt) return api.sendMessage("Title, Style and Lyrics required.", threadID, messageID);
 
-      if (title.length > 80)
-        return api.sendMessage("Title too long (max 80 chars).", threadID, messageID);
-
-      const styleLimit = ["V4_5", "V4_5PLUS", "V5"].includes(model) ? 1000 : 200;
-      if (style.length > styleLimit)
-        return api.sendMessage(
-          `Style too long for ${model} (max ${styleLimit} chars).`,
-          threadID,
-          messageID
-        );
-
-      const promptLimit = ["V4_5", "V4_5PLUS", "V5"].includes(model) ? 5000 : 3000;
-      if (prompt.length > promptLimit)
-        return api.sendMessage(
-          `Lyrics too long for ${model} (max ${promptLimit} chars).`,
-          threadID,
-          messageID
-        );
-
-      payload = {
-        model,
-        customMode: true,
-        instrumental: false,
-        title,
-        style,
-        prompt
-      };
+      payload = { model, customMode: true, instrumental: false, title, style, prompt };
     }
-
-    const waiting = await api.sendMessage("generating....", threadID, messageID);
 
     try {
       const res = await axios.post(SUNO_API, payload, {
-        headers: {
-          Authorization: `Bearer ${API_KEY}`,
-          "Content-Type": "application/json"
-        },
+        headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json" },
         timeout: 60000
       });
 
       if (!res.data.ok || !res.data.jobId || !res.data.task_url) {
-        return api.editMessage("API rejected request.", waiting.messageID);
+        return api.sendMessage("API rejected request.", threadID, messageID);
       }
 
-      const taskUrl = res.data.task_url;
-      const jobId = res.data.jobId;
-
-      await api.editMessage(`Job submitted: ${jobId}`, waiting.messageID);
+      const { jobId, task_url: taskUrl } = res.data;
+      const waiting = await api.sendMessage(`Generating... Job ID: ${jobId}`, threadID, messageID);
 
       let taskData = null;
       let attempts = 0;
@@ -171,43 +108,26 @@ module.exports = {
 
         try {
           const { data } = await axios.get(taskUrl, { timeout: 30000 });
-
           if (data.ok && data.status === "done" && data.records?.length) {
             taskData = data;
             break;
           }
-
           if (data.ok && data.status === "failed") {
-            return api.editMessage(
-              "Generation failed on server.",
-              waiting.messageID
-            );
+            return api.sendMessage("Generation failed on server.", threadID, messageID);
           }
         } catch (e) {
           if (e.response?.status !== 524) console.error(e);
         }
-
-        if (attempts % 12 === 0) {
-          await api.editMessage(
-            `Still generating... (~${Math.round((attempts * 5) / 60)} min elapsed)`,
-            waiting.messageID
-          );
-        }
       }
 
       if (!taskData) {
-        return api.editMessage(
-          "Timed out after 10 minutes or server error (524). Try again later.",
-          waiting.messageID
-        );
+        return api.sendMessage("Timed out or server error.", threadID, messageID);
       }
 
       await api.unsendMessage(waiting.messageID);
 
       for (let i = 0; i < taskData.records.length; i++) {
         const rec = taskData.records[i];
-        const songId = rec.id;
-
         const audioPath = path.join(__dirname, `suno_${jobId}_${i}.mp3`);
         const imagePath = path.join(__dirname, `suno_${jobId}_${i}.jpg`);
 
@@ -221,16 +141,10 @@ module.exports = {
           fs.unlinkSync(imagePath);
         }
 
-        await api.sendMessage(
-          `Song ID : ${songId}\nhttps://suno.com/song/${songId}`,
-          threadID,
-          messageID
-        );
+        await api.sendMessage(`Song ID : ${rec.id}\nhttps://suno.com/song/${rec.id}`, threadID, messageID);
       }
     } catch (error) {
-      const msg =
-        error.response?.data?.message || error.message || "Unknown error";
-      api.editMessage(`Error: ${msg}`, waiting?.messageID || messageID, threadID);
+      api.sendMessage(`Error: ${error.message}`, threadID, messageID);
     }
   }
 };

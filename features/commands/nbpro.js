@@ -7,20 +7,14 @@ module.exports = {
   config: {
     name: "nbpro2",
     aliases: [],
-    version: "1.3",
+    version: "1.4",
     author: "NZ R",
     countDown: 5,
     role: 0,
-    shortDescription: { en: "Nano Banana Pro AI images" },
-    longDescription: { en: "Generate nano-banana-pro images" },
+    shortDescription: { en: "Gemini 3.1 4K Images" },
+    longDescription: { en: "Generate 4K Landscape images using Gemini 3.1 Flash" },
     category: "AI",
-    guide: { en: "{prefix}nbpro <prompt> --ar 1:1|16:9|9:16 --num 1-4" }
-  },
-
-  ratioToSize(r) {
-    if (r === "16:9") return [1792, 1024];
-    if (r === "9:16") return [1024, 1792];
-    return [1024, 1024];
+    guide: { en: "{prefix}nbpro2 <prompt> --num 1-4 --natural|--vivid" }
   },
 
   async autoCleanup(dir) {
@@ -32,22 +26,6 @@ module.exports = {
         try { fs.unlinkSync(p); } catch {}
       }
     }
-  },
-
-  async poll(taskUrl, bearer) {
-    const start = Date.now();
-    while (Date.now() - start < 90000) {
-      const r = await axios.get(taskUrl, {
-        headers: { Authorization: `Bearer ${bearer}` },
-        timeout: 20000
-      });
-      if (r.data.status === "done" && r.data.image_urls?.length) {
-        return r.data.image_urls[0];
-      }
-      if (r.data.status === "failed") throw new Error("failed");
-      await new Promise(r => setTimeout(r, 3000));
-    }
-    throw new Error("timeout");
   },
 
   async process(buf, meta, w, h) {
@@ -75,22 +53,15 @@ module.exports = {
 
   async handleReply({ api, event, data }) {
     const { threadID, messageID } = event;
-    const { buffers, suggestionMsgID } = data;
-
+    const { buffers } = data;
     const index = parseInt(event.body) - 1;
     if (isNaN(index) || index < 0 || index >= buffers.length) {
       return api.sendMessage("Invalid selection.", threadID, messageID);
     }
-
-    if (suggestionMsgID) {
-      // UnsendMessage removed to keep combined image available
-    }
-
     const imagesDir = path.join(__dirname, "images");
     if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
     const outPath = path.join(imagesDir, `${Date.now()}.png`);
     fs.writeFileSync(outPath, buffers[index]);
-
     return api.sendMessage(
       { attachment: fs.createReadStream(outPath) },
       threadID,
@@ -104,13 +75,16 @@ module.exports = {
     if (!args.length) return;
 
     let text = args.join(" ");
-    let ratio = "1:1";
     let num = 1;
+    let style = "vivid";
 
-    const ar = text.match(/--ar\s*(1:1|16:9|9:16)/i);
-    if (ar) {
-      ratio = ar[1];
-      text = text.replace(ar[0], "").trim();
+    if (text.includes("--natural")) {
+      style = "natural";
+      text = text.replace("--natural", "").trim();
+    }
+    if (text.includes("--vivid")) {
+      style = "vivid";
+      text = text.replace("--vivid", "").trim();
     }
 
     const nm = text.match(/--num\s*([1-4])/i);
@@ -121,35 +95,36 @@ module.exports = {
 
     if (!text) return;
 
-    const [W, H] = this.ratioToSize(ratio);
+    const W = 3840;
+    const H = 2160;
+    const sizeParam = "1792x1024";
     const imagesDir = path.join(__dirname, "images");
     await this.autoCleanup(imagesDir);
 
-    const BEARER = "sk-paxsenix-Wb6nXF-6jiNjPjMJYFbawnfbED0_xY_baG0wyLTERmPLGU7H";
-    const endpoint = "https://api.paxsenix.org/ai-image/nano-banana";
-
-    const buffers = [];
-    const files = [];
-
     try {
+      const requests = [];
       for (let i = 0; i < num; i++) {
-        const r = await axios.get(endpoint, {
-          params: { prompt: text, model: "nano-banana-2", ratio },
-          headers: { Authorization: `Bearer ${BEARER}` },
-          timeout: 60000
-        });
-
-        const imgUrl = await this.poll(r.data.task_url, BEARER);
-        const img = await axios.get(imgUrl, { responseType: "arraybuffer" });
-        buffers.push(Buffer.from(img.data));
+        requests.push(axios.post("https://api-reverse-engineering.kines966176.workers.dev/v1/images/generations", {
+          model: "gemini-3.1-flash-image-preview",
+          prompt: text,
+          n: 1,
+          size: sizeParam,
+          quality: "hd",
+          style: style,
+          temperature: 1.7,
+          negative_prompt: "blurry, low quality, distorted, ugly, deformed",
+          contents: [{ role: "user", parts: [{ text: `${style}, realistic, Generate an image: ${text}` }] }]
+        }, {
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer sk-9661" }
+        }));
       }
 
-      let output;
+      const responses = await Promise.all(requests);
+      const buffers = responses.map(res => Buffer.from(res.data.data[0].b64_json, 'base64'));
 
       if (num === 1) {
-        output = buffers[0];
         const outPath = path.join(imagesDir, `${Date.now()}.png`);
-        fs.writeFileSync(outPath, output);
+        fs.writeFileSync(outPath, buffers[0]);
         return api.sendMessage(
           { attachment: fs.createReadStream(outPath) },
           threadID,
@@ -161,13 +136,12 @@ module.exports = {
         const ch = Math.round(H / 2);
         const metas = await Promise.all(buffers.map(b => sharp(b).metadata()));
         const processed = await Promise.all(buffers.map((b, i) => this.process(b, metas[i], cw, ch)));
-        output = await this.grid(processed, cw * 2, ch * 2, cw, ch);
-
+        const gridBuffer = await this.grid(processed, cw * 2, ch * 2, cw, ch);
         const outPath = path.join(imagesDir, `${Date.now()}.png`);
-        fs.writeFileSync(outPath, output);
+        fs.writeFileSync(outPath, gridBuffer);
 
         return api.sendMessage(
-          { body: "", attachment: fs.createReadStream(outPath) },
+          { body: ``, attachment: fs.createReadStream(outPath) },
           threadID,
           (err, info) => {
             if (err) return;
@@ -175,13 +149,12 @@ module.exports = {
             commandHandler.setReplyHandler(info.messageID, senderID, {
               commandName: this.config.name,
               handler: this.handleReply.bind(this),
-              data: { buffers, suggestionMsgID: info.messageID }
+              data: { buffers }
             });
           },
           messageID
         );
       }
-
     } catch (e) {
       console.error(e);
     }
