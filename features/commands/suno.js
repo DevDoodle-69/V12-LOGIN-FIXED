@@ -126,22 +126,40 @@ module.exports = {
 
       await api.unsendMessage(waiting.messageID);
 
+      const attachments = [];
       for (let i = 0; i < taskData.records.length; i++) {
         const rec = taskData.records[i];
         const audioPath = path.join(__dirname, `suno_${jobId}_${i}.mp3`);
         const imagePath = path.join(__dirname, `suno_${jobId}_${i}.jpg`);
 
-        await downloadFile(rec.audio_url, audioPath);
-        await api.sendMessage({ attachment: fs.createReadStream(audioPath) }, threadID, messageID);
-        fs.unlinkSync(audioPath);
+        try {
+          await downloadFile(rec.audio_url, audioPath);
+          attachments.push(fs.createReadStream(audioPath));
 
-        if (rec.image_url) {
-          await downloadFile(rec.image_url, imagePath);
-          await api.sendMessage({ attachment: fs.createReadStream(imagePath) }, threadID, messageID);
-          fs.unlinkSync(imagePath);
+          if (rec.image_url) {
+            await downloadFile(rec.image_url, imagePath);
+            attachments.push(fs.createReadStream(imagePath));
+          }
+        } catch (err) {
+          console.error(`Error downloading record ${i}:`, err);
         }
+      }
 
-        await api.sendMessage(`Song ID : ${rec.id}\nhttps://suno.com/song/${rec.id}`, threadID, messageID);
+      if (attachments.length > 0) {
+        await api.sendMessage({
+          body: taskData.records.map((rec, i) => `🎵 Song ${i + 1}: ${rec.title}\n🆔 ID: ${rec.id}\n🔗 https://suno.com/song/${rec.id}`).join("\n\n"),
+          attachment: attachments
+        }, threadID, messageID);
+
+        // Clean up files after sending
+        for (let i = 0; i < taskData.records.length; i++) {
+          const audioPath = path.join(__dirname, `suno_${jobId}_${i}.mp3`);
+          const imagePath = path.join(__dirname, `suno_${jobId}_${i}.jpg`);
+          if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+          if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+        }
+      } else {
+        api.sendMessage("Failed to download any media files.", threadID, messageID);
       }
     } catch (error) {
       api.sendMessage(`Error: ${error.message}`, threadID, messageID);
