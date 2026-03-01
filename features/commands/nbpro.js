@@ -111,9 +111,7 @@ module.exports = {
           size: sizeParam,
           quality: "hd",
           style: style,
-          temperature: 1.7,
-          negative_prompt: "blurry, low quality, distorted, ugly, deformed",
-          contents: [{ role: "user", parts: [{ text: `${style}, realistic, Generate an image: ${text}` }] }]
+          contents: [{ role: "user", parts: [{ text: `Generate an image of: ${text}` }] }]
         }, {
           headers: { "Content-Type": "application/json", "Authorization": "Bearer sk-9661" }
         }));
