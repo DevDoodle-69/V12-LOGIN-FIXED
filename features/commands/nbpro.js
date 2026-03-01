@@ -104,36 +104,33 @@ module.exports = {
     try {
       const requests = [];
       for (let i = 0; i < num; i++) {
-        requests.push(axios.post("https://api-reverse-engineering.kines966176.workers.dev/v1/images/generations", {
-          model: "gemini-3.1-flash-image-preview",
-          prompt: text,
-          n: 1,
-          size: sizeParam,
-          quality: "hd",
-          style: style,
-          contents: [{ role: "user", parts: [{ text: `Generate an image of: ${text}` }] }]
-        }, {
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer sk-9661" }
-        }));
+        requests.push(
+          axios.post("https://api-reverse-engineering.kines966176.workers.dev/v1/images/generations", {
+            model: "gemini-3.1-flash-image-preview",
+            prompt: text,
+            n: 1,
+            size: sizeParam,
+            quality: "hd",
+            style: style,
+            temperature: 1.7,
+            negative_prompt: "blurry, low quality, distorted, ugly, deformed",
+            contents: [{ role: "user", parts: [{ text: `${style}, realistic, Generate an image: ${text}` }] }]
+          }, {
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer sk-9661" }
+          }).catch(err => ({ error: true, details: err }))
+        );
       }
 
-      const responses = await Promise.all(requests);
-      const buffers = responses
-        .map(res => {
-          const imageData = res.data && res.data.data && res.data.data[0];
-          if (imageData && imageData.b64_json) {
-            return Buffer.from(imageData.b64_json, 'base64');
-          }
-          console.error("Invalid response format from image API:", JSON.stringify(res.data));
-          return null;
-        })
-        .filter(b => b !== null);
+      const results = await Promise.all(requests);
+      const buffers = results
+        .filter(res => !res.error && res.data && res.data.data && res.data.data[0])
+        .map(res => Buffer.from(res.data.data[0].b64_json, 'base64'));
 
       if (buffers.length === 0) {
-        return api.sendMessage("Failed to generate any images. Please try again later.", threadID, messageID);
+        return api.sendMessage("Failed to generate any images. Please try again.", threadID, messageID);
       }
 
-      if (num === 1 || buffers.length === 1) {
+      if (buffers.length === 1) {
         const outPath = path.join(imagesDir, `${Date.now()}.png`);
         fs.writeFileSync(outPath, buffers[0]);
         return api.sendMessage(
@@ -152,7 +149,7 @@ module.exports = {
         fs.writeFileSync(outPath, gridBuffer);
 
         return api.sendMessage(
-          { body: ``, attachment: fs.createReadStream(outPath) },
+          { body: `Style: ${style.toUpperCase()}\nReply with 1-${buffers.length} to get the full quality image.`, attachment: fs.createReadStream(outPath) },
           threadID,
           (err, info) => {
             if (err) return;
@@ -168,6 +165,7 @@ module.exports = {
       }
     } catch (e) {
       console.error(e);
+      api.sendMessage("An error occurred during image generation.", threadID, messageID);
     }
   }
 };
