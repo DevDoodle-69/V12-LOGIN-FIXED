@@ -120,9 +120,22 @@ module.exports = {
       }
 
       const responses = await Promise.all(requests);
-      const buffers = responses.map(res => Buffer.from(res.data.data[0].b64_json, 'base64'));
+      const buffers = responses
+        .map(res => {
+          const imageData = res.data && res.data.data && res.data.data[0];
+          if (imageData && imageData.b64_json) {
+            return Buffer.from(imageData.b64_json, 'base64');
+          }
+          console.error("Invalid response format from image API:", JSON.stringify(res.data));
+          return null;
+        })
+        .filter(b => b !== null);
 
-      if (num === 1) {
+      if (buffers.length === 0) {
+        return api.sendMessage("Failed to generate any images. Please try again later.", threadID, messageID);
+      }
+
+      if (num === 1 || buffers.length === 1) {
         const outPath = path.join(imagesDir, `${Date.now()}.png`);
         fs.writeFileSync(outPath, buffers[0]);
         return api.sendMessage(
