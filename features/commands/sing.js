@@ -34,20 +34,13 @@ module.exports = {
   },
 
   async onStart({ api, event, args, commandHandler }) {
-    const { threadID, messageID } = event;
-    if (!args[0]) {
-      return api.sendMessage("Enter a song name to search.", threadID, messageID);
-    }
+    const { threadID, messageID, messageReply } = event;
 
-    try {
-      const searchResults = await yts(args.join(" "));
+    const searchYoutube = async (query) => {
+      const searchResults = await yts(query);
       const videos = searchResults.videos.slice(0, 6);
-
-      if (!videos.length) {
-        return api.sendMessage("No results found.", threadID, messageID);
-      }
-
-      const tracks = videos.map(v => ({
+      if (!videos.length) return [];
+      return videos.map(v => ({
         title: v.title,
         artist: v.author.name,
         duration: v.timestamp,
@@ -55,10 +48,42 @@ module.exports = {
         thumbnail: v.thumbnail,
         url: v.url
       }));
+    };
 
-      return handleSearchResults(this, api, event, tracks, commandHandler);
-    } catch (error) {
-      return api.sendMessage("Search failed.", threadID, messageID);
+    if (messageReply && messageReply.attachments?.length > 0) {
+      const attachment = messageReply.attachments[0];
+      try {
+        const musicRecog = await axios.get(
+          `https://audio-recon-ahcw.onrender.com/kshitiz?url=${encodeURIComponent(attachment.url)}`
+        );
+
+        if (!musicRecog.data.title) {
+          return api.sendMessage("Couldn't recognize the song.", threadID, messageID);
+        }
+
+        const results = await searchYoutube(musicRecog.data.title);
+        if (results.length === 0) {
+          return api.sendMessage("Couldn't find the recognized song on YouTube.", threadID, messageID);
+        }
+        return await handleSearchResults(this, api, event, results, commandHandler);
+      } catch (err) {
+        return api.sendMessage(`Error: ${err.message}`, threadID, messageID);
+      }
+    }
+
+    if (!args[0]) {
+      return api.sendMessage("Enter a song name or reply to an audio/video to search.", threadID, messageID);
+    }
+
+    const query = args.join(" ");
+    try {
+      const results = await searchYoutube(query);
+      if (results.length === 0) {
+        return api.sendMessage("No results found.", threadID, messageID);
+      }
+      return await handleSearchResults(this, api, event, results, commandHandler);
+    } catch (err) {
+      return api.sendMessage(`Error: ${err.message}`, threadID, messageID);
     }
   },
 
