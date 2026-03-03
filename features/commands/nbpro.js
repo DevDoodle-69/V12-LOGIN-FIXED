@@ -7,14 +7,14 @@ module.exports = {
   config: {
     name: "nbpro2",
     aliases: [],
-    version: "1.4",
+    version: "2.0",
     author: "NZ R",
     countDown: 5,
     role: 0,
-    shortDescription: { en: "Gemini 3.1 4K Images" },
-    longDescription: { en: "Generate 4K Landscape images using Gemini 3.1 Flash" },
+    shortDescription: { en: "Advanced Image Generator" },
+    longDescription: { en: "Generate high quality images with flexible ratios and grid support" },
     category: "AI",
-    guide: { en: "{prefix}nbpro2 <prompt> --num 1-4 --natural|--vivid" }
+    guide: { en: "{prefix}nbpro2 <prompt> --ar 16:9|1:1|9:16|2K|4K --natural|--vivid --num 1-4" }
   },
 
   async autoCleanup(dir) {
@@ -28,13 +28,23 @@ module.exports = {
     }
   },
 
+  getResolution(ar) {
+    const map = {
+      "1:1": { w: 1024, h: 1024, api: "1024x1024" },
+      "16:9": { w: 1792, h: 1024, api: "1792x1024" },
+      "9:16": { w: 1024, h: 1792, api: "1024x1792" },
+      "2K": { w: 2048, h: 2048, api: "1024x1024" },
+      "4K": { w: 4096, h: 4096, api: "1024x1024" }
+    };
+    return map[ar] || map["16:9"];
+  },
+
   async process(buf, meta, w, h) {
     const r1 = w / h;
     const r2 = meta.width / meta.height;
     const crop = r2 > r1
       ? { width: Math.round(meta.height * r1), height: meta.height, left: Math.round((meta.width - meta.height * r1) / 2), top: 0 }
       : { width: meta.width, height: Math.round(meta.width / r1), left: 0, top: Math.round((meta.height - meta.width / r1) / 2) };
-
     return sharp(buf).extract(crop).resize(w, h).png({ quality: 100 }).toBuffer();
   },
 
@@ -53,7 +63,7 @@ module.exports = {
 
   async handleReply({ api, event, data }) {
     const { threadID, messageID } = event;
-    const { buffers } = data;
+    const { buffers, w, h } = data;
     const index = parseInt(event.body) - 1;
     if (isNaN(index) || index < 0 || index >= buffers.length) {
       return api.sendMessage("Invalid selection.", threadID, messageID);
@@ -77,6 +87,7 @@ module.exports = {
     let text = args.join(" ");
     let num = 1;
     let style = "vivid";
+    let ar = "16:9";
 
     if (text.includes("--natural")) {
       style = "natural";
@@ -93,79 +104,80 @@ module.exports = {
       text = text.replace(nm[0], "").trim();
     }
 
+    const arm = text.match(/--ar\s*(16:9|1:1|9:16|2K|4K)/i);
+    if (arm) {
+      ar = arm[1].toUpperCase();
+      text = text.replace(arm[0], "").trim();
+    }
+
     if (!text) return;
 
-    const W = 3840;
-    const H = 2160;
-    const sizeParam = "1792x1024";
+    const { w, h, api: sizeParam } = this.getResolution(ar);
     const imagesDir = path.join(__dirname, "images");
     await this.autoCleanup(imagesDir);
 
     try {
       const requests = [];
       for (let i = 0; i < num; i++) {
-        requests.push(
-          axios.post("https://api-reverse-engineering.kines966176.workers.dev/v1/images/generations", {
-            model: "gemini-3.1-flash-image-preview",
-            prompt: text,
-            n: 1,
-            size: sizeParam,
-            quality: "hd",
-            style: style,
-            temperature: 1.7,
-            negative_prompt: "blurry, low quality, distorted, ugly, deformed",
-            contents: [{ role: "user", parts: [{ text: `${style}, realistic, Generate an image: ${text}` }] }]
-          }, {
-            headers: { "Content-Type": "application/json", "Authorization": "Bearer sk-9661" }
-          }).catch(err => ({ error: true, details: err }))
-        );
+        requests.push(axios.post("https://api-reverse-engineering.kines966176.workers.dev/v1/images/generations", {
+          model: "gemini-3-pro-image-preview",
+          prompt: text,
+          n: 1,
+          size: sizeParam,
+          quality: "hd",
+          style: style,
+          temperature: 1.7,
+          negative_prompt: "blurry, low quality, distorted, ugly, deformed",
+          contents: [{ role: "user", parts: [{ text: `${style}, realistic, ${text}` }] }]
+        }, {
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer sk-9661" }
+        }));
       }
 
-      const results = await Promise.all(requests);
-      const buffers = results
-        .filter(res => !res.error && res.data && res.data.data && res.data.data[0])
-        .map(res => Buffer.from(res.data.data[0].b64_json, 'base64'));
+      const responses = await Promise.all(requests);
+      const rawBuffers = responses.map(res => Buffer.from(res.data.data[0].b64_json, "base64"));
+      const metas = await Promise.all(rawBuffers.map(b => sharp(b).metadata()));
+      const processed = await Promise.all(rawBuffers.map((b, i) => this.process(b, metas[i], w, h)));
 
-      if (buffers.length === 0) {
-        return api.sendMessage("Failed to generate any images. Please try again.", threadID, messageID);
-      }
-
-      if (buffers.length === 1) {
+      if (num === 1) {
         const outPath = path.join(imagesDir, `${Date.now()}.png`);
-        fs.writeFileSync(outPath, buffers[0]);
+        fs.writeFileSync(outPath, processed[0]);
         return api.sendMessage(
           { attachment: fs.createReadStream(outPath) },
           threadID,
           () => setTimeout(() => { try { fs.unlinkSync(outPath); } catch {} }, 20 * 60 * 1000),
           messageID
         );
-      } else {
-        const cw = Math.round(W / 2);
-        const ch = Math.round(H / 2);
-        const metas = await Promise.all(buffers.map(b => sharp(b).metadata()));
-        const processed = await Promise.all(buffers.map((b, i) => this.process(b, metas[i], cw, ch)));
-        const gridBuffer = await this.grid(processed, cw * 2, ch * 2, cw, ch);
-        const outPath = path.join(imagesDir, `${Date.now()}.png`);
-        fs.writeFileSync(outPath, gridBuffer);
-
-        return api.sendMessage(
-          { body: `Style: ${style.toUpperCase()}\nReply with 1-${buffers.length} to get the full quality image.`, attachment: fs.createReadStream(outPath) },
-          threadID,
-          (err, info) => {
-            if (err) return;
-            setTimeout(() => { try { fs.unlinkSync(outPath); } catch {} }, 20 * 60 * 1000);
-            commandHandler.setReplyHandler(info.messageID, senderID, {
-              commandName: this.config.name,
-              handler: this.handleReply.bind(this),
-              data: { buffers }
-            });
-          },
-          messageID
-        );
       }
+
+      const cols = 2;
+      const rows = Math.ceil(num / 2);
+      const cw = w;
+      const ch = h;
+      const finalW = cw * cols;
+      const finalH = ch * rows;
+
+      const gridBuffer = await this.grid(processed, finalW, finalH, cw, ch);
+      const outPath = path.join(imagesDir, `${Date.now()}.png`);
+      fs.writeFileSync(outPath, gridBuffer);
+
+      return api.sendMessage(
+        { attachment: fs.createReadStream(outPath) },
+        threadID,
+        (err, info) => {
+          if (err) return;
+          setTimeout(() => { try { fs.unlinkSync(outPath); } catch {} }, 20 * 60 * 1000);
+          commandHandler.setReplyHandler(info.messageID, senderID, {
+            commandName: this.config.name,
+            handler: this.handleReply.bind(this),
+            data: { buffers: processed, w, h }
+          });
+        },
+        messageID
+      );
+
     } catch (e) {
       console.error(e);
-      api.sendMessage("An error occurred during image generation.", threadID, messageID);
     }
   }
 };
