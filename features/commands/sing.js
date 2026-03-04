@@ -6,6 +6,8 @@ const yts = require("yt-search");
 
 const API_URL = "https://fgsi.dpdns.org/api/downloader/youtube/v2";
 const API_KEY = "fgsiapi-2affc76f-6d";
+const SHAZAM_API = "https://api.paxsenix.org/tools/shazam";
+const SHAZAM_AUTH = "Bearer sk-paxsenix-Tjc1kgE9keNVFcoHEhINEQZcl9EnzyXNg8oe72834wIbaMOX";
 const TEMP_DIR = path.join(__dirname, "../../temp_sing");
 
 const USER_AGENTS = [
@@ -23,14 +25,14 @@ module.exports = {
   config: {
     name: "sing",
     aliases: ["song"],
-    version: "3.1",
+    version: "4.0",
     author: "NZ R",
     countDown: 5,
     role: 0,
     shortDescription: { en: "Search and download audio" },
-    longDescription: { en: "Search and download audio files from the YouTube library." },
+    longDescription: { en: "Search and download audio files from YouTube or recognize music from attachments." },
     category: "MUSIC",
-    guide: { en: "{prefix}sing [query]" }
+    guide: { en: "{prefix}sing [query] or reply to audio/video" }
   },
 
   async onStart({ api, event, args, commandHandler }) {
@@ -52,22 +54,37 @@ module.exports = {
 
     if (messageReply && messageReply.attachments?.length > 0) {
       const attachment = messageReply.attachments[0];
-      try {
-        const musicRecog = await axios.get(
-          `https://audio-recon-ahcw.onrender.com/kshitiz?url=${encodeURIComponent(attachment.url)}`
-        );
+      if (attachment.type !== "audio" && attachment.type !== "video") {
+        return api.sendMessage("Please reply to an audio or video file.", threadID, messageID);
+      }
 
-        if (!musicRecog.data.title) {
+      const waiting = await api.sendMessage("Recognizing music...", threadID, messageID);
+      try {
+        const res = await axios.get(`${SHAZAM_API}?url=${encodeURIComponent(attachment.url)}`, {
+          headers: {
+            "Authorization": SHAZAM_AUTH,
+            "Content-Type": "application/json"
+          }
+        });
+
+        await api.unsendMessage(waiting.messageID);
+
+        if (!res.data.ok || !res.data.track) {
           return api.sendMessage("Couldn't recognize the song.", threadID, messageID);
         }
 
-        const results = await searchYoutube(musicRecog.data.title);
+        const songTitle = res.data.track.title;
+        const artist = res.data.track.artist;
+        const results = await searchYoutube(`${songTitle} ${artist}`);
+
         if (results.length === 0) {
-          return api.sendMessage("Couldn't find the recognized song on YouTube.", threadID, messageID);
+          return api.sendMessage(`Recognized as "${songTitle}" but couldn't find it on YouTube.`, threadID, messageID);
         }
+
         return await handleSearchResults(this, api, event, results, commandHandler);
       } catch (err) {
-        return api.sendMessage(`Error: ${err.message}`, threadID, messageID);
+        if (waiting.messageID) await api.unsendMessage(waiting.messageID);
+        return api.sendMessage(`Recognition Error: ${err.message}`, threadID, messageID);
       }
     }
 
@@ -107,6 +124,7 @@ module.exports = {
     }
 
     const track = results[index];
+    const downloading = await api.sendMessage(`Downloading: ${track.title}...`, threadID, messageID);
 
     try {
       const apiUrl = `${API_URL}?apikey=${API_KEY}&url=${encodeURIComponent(track.url)}&type=mp3`;
@@ -126,10 +144,10 @@ module.exports = {
           "User-Agent": getRandomUA(),
           "Referer": "https://www.youtube.com/"
         },
-        timeout: 20000 // 20s timeout for stream start
+        timeout: 60000
       }).then(res => res.data);
 
-      if (!stream.path) stream.path = `${Date.now()}.mp3`;
+      await api.unsendMessage(downloading.messageID);
 
       return api.sendMessage(
         {
@@ -138,24 +156,14 @@ module.exports = {
         },
         threadID,
         (err) => {
-          if (err) {
-            console.error("SendMessage Error:", err);
-            api.sendMessage("Error sending audio.", threadID, messageID);
-          }
+          if (err) api.sendMessage("Error sending audio file.", threadID, messageID);
         },
         messageID
       );
 
     } catch (error) {
-      console.error("Sing Error:", error.response?.status || error.message);
-      const status = error.response?.status;
-      let errorMsg = "Download failed: ";
-      
-      if (status === 404) errorMsg += "404.";
-      else if (status === 403) errorMsg += "403.";
-      else errorMsg += error.message;
-
-      return api.sendMessage(errorMsg, threadID, messageID);
+      if (downloading.messageID) await api.unsendMessage(downloading.messageID);
+      return api.sendMessage(`Download failed: ${error.message}`, threadID, messageID);
     }
   }
 };
@@ -168,33 +176,43 @@ async function handleSearchResults(self, api, event, results, commandHandler) {
     msg += `${i + 1}. ${v.title}\nChannel: ${v.artist}\nDuration: ${v.duration}\n\n`;
   });
 
-  const image = await createCombinedThumbnail(results);
-  const stream = fs.createReadStream(image);
+  try {
+    const image = await createCombinedThumbnail(results);
+    const stream = fs.createReadStream(image);
 
-  return api.sendMessage(
-    { body: msg + "Reply with a number within 30 seconds.", attachment: stream },
-    threadID,
-    (err, info) => {
-      if (fs.existsSync(image)) fs.unlinkSync(image);
-      if (err) return;
+    return api.sendMessage(
+      { body: msg + "Reply with a number within 30 seconds.", attachment: stream },
+      threadID,
+      (err, info) => {
+        if (fs.existsSync(image)) fs.unlinkSync(image);
+        if (err) return;
 
-      const timeout = setTimeout(() => {
-        api.editMessage("Request expired.", info.messageID, threadID);
+        const timeout = setTimeout(() => {
+          api.editMessage("Request expired.", info.messageID, threadID);
+          commandHandler.setReplyHandler(info.messageID, senderID, {
+            commandName: self.config.name,
+            handler: self.handleReply.bind(self),
+            data: { expired: true }
+          });
+        }, 30000);
+
         commandHandler.setReplyHandler(info.messageID, senderID, {
           commandName: self.config.name,
           handler: self.handleReply.bind(self),
-          data: { expired: true }
+          data: { results, suggestionMsgID: info.messageID, expired: false, timeout }
         });
-      }, 30000);
-
-      commandHandler.setReplyHandler(info.messageID, senderID, {
-        commandName: self.config.name,
-        handler: self.handleReply.bind(self),
-        data: { results, suggestionMsgID: info.messageID, expired: false, timeout }
-      });
-    },
-    messageID
-  );
+      },
+      messageID
+    );
+  } catch (err) {
+    return api.sendMessage(msg + "Reply with a number within 30 seconds.", threadID, (err, info) => {
+       commandHandler.setReplyHandler(info.messageID, senderID, {
+            commandName: self.config.name,
+            handler: self.handleReply.bind(self),
+            data: { results, suggestionMsgID: info.messageID, expired: false }
+        });
+    }, messageID);
+  }
 }
 
 async function createCombinedThumbnail(tracks) {
@@ -212,7 +230,6 @@ async function createCombinedThumbnail(tracks) {
   );
 
   const layers = [];
-
   for (let i = 0; i < 6; i++) {
     const buf = buffers[i];
     const img = buf
