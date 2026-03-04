@@ -109,14 +109,19 @@ module.exports = {
             const stream = await axios({
                 url: response.data.url,
                 method: "GET",
-                responseType: "stream",
+                responseType: "arraybuffer",
                 headers: { "User-Agent": UA, "Referer": "https://www.youtube.com/" }
             }).then(res => res.data);
 
+            const filePath = path.join(TEMP_DIR, `${Date.now()}.mp3`);
+            fs.writeFileSync(filePath, Buffer.from(stream));
+
             return api.sendMessage({
                 body: `Title: ${track.title}\nChannel: ${track.artist}\nDuration: ${track.duration}`,
-                attachment: stream
-            }, threadID, messageID);
+                attachment: fs.createReadStream(filePath)
+            }, threadID, () => {
+                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            }, messageID);
         } catch (error) {
             return api.sendMessage("Error downloading the audio file.", threadID, messageID);
         }
