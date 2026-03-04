@@ -37,8 +37,8 @@ module.exports = {
     category: "MUSIC",
     guide: {
       en:
-        "{prefix}suno Title | Style | Lyrics [--model]\n" +
-        "{prefix}suno AI <prompt> [--model]\nAvailable models: --V3 --V3_5 --V4 --V4_5 --V4_5PLUS --V5\nRandom model if not specified."
+        "{prefix}suno Title | Style | Lyrics [--V3|--V3_5|--V4|--V4_5|--V4_5PLUS|--V5]\n" +
+        "{prefix}suno AI <prompt> [--V3|--V3_5|--V4|--V4_5|--V4_5PLUS|--V5]"
     }
   },
 
@@ -66,29 +66,89 @@ module.exports = {
     }
 
     const subCommand = cleanArgs[0]?.toLowerCase();
-    let payload = { model, customMode: true, instrumental: false, title: "", style: "", prompt: "" };
+
+    let payload = {
+      model,
+      customMode: true,
+      instrumental: false,
+      title: "",
+      style: "",
+      prompt: ""
+    };
 
     if (subCommand === "ai") {
       const prompt = cleanArgs.slice(1).join(" ").trim();
-      if (!prompt) return api.sendMessage("Usage: suno AI <prompt> [--model]", threadID, messageID);
-      payload = { model, customMode: false, instrumental: false, title: "", style: "", prompt };
+      if (!prompt)
+        return api.sendMessage("Usage: suno AI <prompt> [--model]", threadID, messageID);
+      if (prompt.length > 400)
+        return api.sendMessage("Prompt too long (max 400 chars).", threadID, messageID);
+
+      payload = {
+        model,
+        customMode: false,
+        instrumental: false,
+        title: "",
+        style: "",
+        prompt
+      };
     } else {
       const inputString = cleanArgs.join(" ");
-      if (!inputString.includes("|")) return api.sendMessage("Usage: suno Title | Style | Lyrics [--model]", threadID, messageID);
+      if (!inputString.includes("|"))
+        return api.sendMessage(
+          "Usage: suno Title | Style | Lyrics [--model]",
+          threadID,
+          messageID
+        );
 
       const parts = inputString.split("|").map(p => p.trim());
       const title = parts[0] || "";
       const style = parts[1] || "";
       const prompt = parts.slice(2).join("|").trim();
 
-      if (!title || !style || !prompt) return api.sendMessage("Title, Style and Lyrics required.", threadID, messageID);
+      if (!title || !style || !prompt)
+        return api.sendMessage(
+          "Title, Style and Lyrics required.\nUsage: suno Title | Style | Lyrics [--model]",
+          threadID,
+          messageID
+        );
 
-      payload = { model, customMode: true, instrumental: false, title, style, prompt };
+      if (title.length > 80)
+        return api.sendMessage("Title too long (max 80 chars).", threadID, messageID);
+
+      const styleLimit = ["V4_5", "V4_5PLUS", "V5"].includes(model) ? 1000 : 200;
+      if (style.length > styleLimit)
+        return api.sendMessage(
+          `Style too long for ${model} (max ${styleLimit} chars).`,
+          threadID,
+          messageID
+        );
+
+      const promptLimit = ["V4_5", "V4_5PLUS", "V5"].includes(model) ? 5000 : 3000;
+      if (prompt.length > promptLimit)
+        return api.sendMessage(
+          `Lyrics too long for ${model} (max ${promptLimit} chars).`,
+          threadID,
+          messageID
+        );
+
+      payload = {
+        model,
+        customMode: true,
+        instrumental: false,
+        title,
+        style,
+        prompt
+      };
     }
+
+    let waiting;
 
     try {
       const res = await axios.post(SUNO_API, payload, {
-        headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "application/json"
+        },
         timeout: 60000
       });
 
@@ -96,8 +156,10 @@ module.exports = {
         return api.sendMessage("API rejected request.", threadID, messageID);
       }
 
-      const { jobId, task_url: taskUrl } = res.data;
-      const waiting = await api.sendMessage(`Generating... Job ID: ${jobId}`, threadID, messageID);
+      const taskUrl = res.data.task_url;
+      const jobId = res.data.jobId;
+
+      waiting = await api.sendMessage(`Generating... Job ID: ${jobId}`, threadID, messageID);
 
       let taskData = null;
       let attempts = 0;
@@ -108,10 +170,12 @@ module.exports = {
 
         try {
           const { data } = await axios.get(taskUrl, { timeout: 30000 });
+
           if (data.ok && data.status === "done" && data.records?.length) {
             taskData = data;
             break;
           }
+
           if (data.ok && data.status === "failed") {
             return api.sendMessage("Generation failed on server.", threadID, messageID);
           }
@@ -121,48 +185,37 @@ module.exports = {
       }
 
       if (!taskData) {
-        return api.sendMessage("Timed out or server error.", threadID, messageID);
+        return api.sendMessage("Timed out after 10 minutes or server error (524). Try again later.", threadID, messageID);
       }
 
       await api.unsendMessage(waiting.messageID);
 
-      const attachments = [];
       for (let i = 0; i < taskData.records.length; i++) {
         const rec = taskData.records[i];
+        const songId = rec.id;
+
         const audioPath = path.join(__dirname, `suno_${jobId}_${i}.mp3`);
         const imagePath = path.join(__dirname, `suno_${jobId}_${i}.jpg`);
 
-        try {
-          await downloadFile(rec.audio_url, audioPath);
-          attachments.push(fs.createReadStream(audioPath));
+        await downloadFile(rec.audio_url, audioPath);
+        await api.sendMessage({ attachment: fs.createReadStream(audioPath) }, threadID, messageID);
+        fs.unlinkSync(audioPath);
 
-          if (rec.image_url) {
-            await downloadFile(rec.image_url, imagePath);
-            attachments.push(fs.createReadStream(imagePath));
-          }
-        } catch (err) {
-          console.error(`Error downloading record ${i}:`, err);
+        if (rec.image_url) {
+          await downloadFile(rec.image_url, imagePath);
+          await api.sendMessage({ attachment: fs.createReadStream(imagePath) }, threadID, messageID);
+          fs.unlinkSync(imagePath);
         }
-      }
 
-      if (attachments.length > 0) {
-        await api.sendMessage({
-          body: taskData.records.map((rec, i) => `🎵 Song ${i + 1}: ${rec.title}\n🆔 ID: ${rec.id}\n🔗 https://suno.com/song/${rec.id}`).join("\n\n"),
-          attachment: attachments
-        }, threadID, messageID);
-
-        // Clean up files after sending
-        for (let i = 0; i < taskData.records.length; i++) {
-          const audioPath = path.join(__dirname, `suno_${jobId}_${i}.mp3`);
-          const imagePath = path.join(__dirname, `suno_${jobId}_${i}.jpg`);
-          if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
-          if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-        }
-      } else {
-        api.sendMessage("Failed to download any media files.", threadID, messageID);
+        await api.sendMessage(
+          `Song ID : ${songId}\nhttps://suno.com/song/${songId}`,
+          threadID,
+          messageID
+        );
       }
     } catch (error) {
-      api.sendMessage(`Error: ${error.message}`, threadID, messageID);
+      const msg = error.response?.data?.message || error.message || "Unknown error";
+      api.sendMessage(`Error: ${msg}`, threadID, messageID);
     }
   }
 };
