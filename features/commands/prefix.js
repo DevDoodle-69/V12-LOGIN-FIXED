@@ -1,1 +1,129 @@
-const fs = require('fs'); const path = require('path'); const config = require('../../core_settings/config.json'); const groupPrefixFile = path.join(__dirname, '../../features/commands/group.json'); function loadGroupPrefixes() { if (!fs.existsSync(groupPrefixFile)) { fs.writeFileSync(groupPrefixFile, '{}'); return {}; } try { return JSON.parse(fs.readFileSync(groupPrefixFile, 'utf8')); } catch { return {}; } } function saveGroupPrefixes(data) { fs.writeFileSync(groupPrefixFile, JSON.stringify(data, null, 2)); } module.exports = { config: { name: "prefix", aliases: [], version: "2.0", author: "NZ R", countDown: 5, role: 0, shortDescription: { en: "Set custom prefix for this group" }, longDescription: { en: "Change or reset the bot prefix for this group or all groups." }, category: "SYSTEM", guide: { en: "{prefix}prefix <new_prefix>\n{prefix}prefix reset - Reset for this group\n{prefix}prefix resetall - Reset for all groups" } }, async onStart({ api, event, args, commandHandler }) { const { threadID, messageID, senderID } = event; const systemPrefix = config.bot.prefix; const groupPrefixes = loadGroupPrefixes(); const currentGroupPrefix = groupPrefixes[threadID] || systemPrefix; if (!args.length) { if (currentGroupPrefix === systemPrefix) { return api.sendMessage(`Current configuration:\nActive Prefix: ${systemPrefix}`, threadID, messageID); } else { return api.sendMessage(`Current configuration:\nGroup Prefix: ${currentGroupPrefix}\nSystem Prefix: ${systemPrefix}`, threadID, messageID); } } const action = args[0].toLowerCase(); if (action === 'reset') { if (currentGroupPrefix === systemPrefix) { return api.sendMessage(`This group is already using the system prefix ${systemPrefix}`, threadID, messageID); } const confirmMsg = await api.sendMessage(`Confirm prefix reset to system default for this group?\n\nReply Y to confirm or N to cancel`, threadID, messageID); if (commandHandler?.setReplyHandler) { commandHandler.setReplyHandler(confirmMsg.messageID, senderID, { commandName: this.config.name, type: "prefix_reset_confirm", handler: this.handleReply.bind(this), data: { threadID, systemPrefix }, maxAttempts: 1, persistent: false }); } return; } if (action === 'resetall') { const confirmMsg = await api.sendMessage(`Confirm reset of all group prefixes to system default?\n\nReply Y to confirm or N to cancel`, threadID, messageID); if (commandHandler?.setReplyHandler) { commandHandler.setReplyHandler(confirmMsg.messageID, senderID, { commandName: this.config.name, type: "prefix_resetall_confirm", handler: this.handleReply.bind(this), data: { systemPrefix }, maxAttempts: 1, persistent: false }); } return; } const newPrefix = args[0]; if (newPrefix.length > 3) { return api.sendMessage(`Invalid prefix length. Maximum 3 characters allowed.`, threadID, messageID); } if (newPrefix === systemPrefix) { return api.sendMessage(`This prefix is already set as the system default.`, threadID, messageID); } groupPrefixes[threadID] = newPrefix; saveGroupPrefixes(groupPrefixes); return api.sendMessage(`Group prefix updated successfully.\nNew Prefix: ${newPrefix}\nSystem Prefix: ${systemPrefix}`, threadID, messageID); }, async handleReply(context) { const { api, event, data, type } = context; const { threadID, messageID, body } = event; const response = body.trim().toUpperCase(); if (type === "prefix_reset_confirm") { if (response === 'Y' || response === 'YES') { const groupPrefixes = loadGroupPrefixes(); delete groupPrefixes[threadID]; saveGroupPrefixes(groupPrefixes); return api.sendMessage(`Prefix reset completed. Now using system default: ${data.systemPrefix}`, threadID, messageID); } else if (response === 'N' || response === 'NO') { return api.sendMessage(`Operation cancelled. Current prefix settings maintained.`, threadID, messageID); } else { return api.sendMessage(`Invalid input. Please respond with Y to confirm or N to cancel.`, threadID, messageID); } } if (type === "prefix_resetall_confirm") { if (response === 'Y' || response === 'YES') { saveGroupPrefixes({}); return api.sendMessage(`All group prefixes reset successfully. System default (${data.systemPrefix}) is now active for all groups.`, threadID, messageID); } else if (response === 'N' || response === 'NO') { return api.sendMessage(`Operation cancelled. Prefix settings for all groups maintained.`, threadID, messageID); } else { return api.sendMessage(`Invalid input. Please respond with Y to confirm or N to cancel.`, threadID, messageID); } } } };
+const fs = require('fs');
+const path = require('path');
+const config = require('../../core_settings/config.json');
+const groupPrefixFile = path.join(__dirname, '../../features/commands/group.json');
+
+function loadGroupPrefixes() {
+  if (!fs.existsSync(groupPrefixFile)) {
+    fs.writeFileSync(groupPrefixFile, '{}');
+    return {};
+  }
+  try {
+    return JSON.parse(fs.readFileSync(groupPrefixFile, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function saveGroupPrefixes(data) {
+  fs.writeFileSync(groupPrefixFile, JSON.stringify(data, null, 2));
+}
+
+module.exports = {
+  config: {
+    name: "prefix",
+    aliases: [],
+    version: "2.0",
+    author: "NZ R",
+    countDown: 5,
+    role: 0,
+    shortDescription: {
+      en: "Set custom prefix for this group"
+    },
+    longDescription: {
+      en: "Change or reset the bot prefix for this group or all groups."
+    },
+    category: "SYSTEM",
+    guide: {
+      en: "{prefix}prefix <new_prefix>\n{prefix}prefix reset - Reset for this group\n{prefix}prefix resetall - Reset for all groups"
+    }
+  },
+
+  async onStart({ api, event, args, commandHandler }) {
+    const { threadID, messageID, senderID } = event;
+    const systemPrefix = config.bot.prefix;
+    const groupPrefixes = loadGroupPrefixes();
+    const currentGroupPrefix = groupPrefixes[threadID] || systemPrefix;
+
+    if (!args.length) {
+      if (currentGroupPrefix === systemPrefix) {
+        return api.sendMessage(`Current configuration:\nActive Prefix: ${systemPrefix}`, threadID, messageID);
+      } else {
+        return api.sendMessage(`Current configuration:\nGroup Prefix: ${currentGroupPrefix}\nSystem Prefix: ${systemPrefix}`, threadID, messageID);
+      }
+    }
+
+    const action = args[0].toLowerCase();
+
+    if (action === 'reset') {
+      if (currentGroupPrefix === systemPrefix) {
+        return api.sendMessage(`This group is already using the system prefix ${systemPrefix}`, threadID, messageID);
+      }
+      const confirmMsg = await api.sendMessage(`Confirm prefix reset to system default for this group?\n\nReply Y to confirm or N to cancel`, threadID, messageID);
+      if (commandHandler?.setReplyHandler) {
+        commandHandler.setReplyHandler(confirmMsg.messageID, senderID, {
+          commandName: "prefix",
+          type: "reset_confirm",
+          confirmMsgID: confirmMsg.messageID
+        });
+      }
+      return;
+    }
+
+    if (action === 'resetall') {
+      if (Object.keys(groupPrefixes).length === 0) {
+        return api.sendMessage("No group prefixes found to reset.", threadID, messageID);
+      }
+      const confirmMsg = await api.sendMessage(`Confirm prefix reset to system default for all groups?\n\nReply Y to confirm or N to cancel`, threadID, messageID);
+      if (commandHandler?.setReplyHandler) {
+        commandHandler.setReplyHandler(confirmMsg.messageID, senderID, {
+          commandName: "prefix",
+          type: "resetall_confirm",
+          confirmMsgID: confirmMsg.messageID
+        });
+      }
+      return;
+    }
+
+    const newPrefix = args[0];
+    if (newPrefix.length > 5) {
+      return api.sendMessage("Prefix cannot exceed 5 characters.", threadID, messageID);
+    }
+
+    groupPrefixes[threadID] = newPrefix;
+    saveGroupPrefixes(groupPrefixes);
+    return api.sendMessage(`Prefix changed successfully for this group.\nNew Prefix: ${newPrefix}`, threadID, messageID);
+  },
+
+  async onReply({ api, event, Reply, commandHandler }) {
+    const { threadID, messageID, body, senderID } = event;
+    const { type, confirmMsgID } = Reply;
+
+    if (senderID !== Reply.senderID) return;
+
+    if (type === "reset_confirm") {
+      if (body.toLowerCase() === 'y') {
+        const groupPrefixes = loadGroupPrefixes();
+        delete groupPrefixes[threadID];
+        saveGroupPrefixes(groupPrefixes);
+        
+        await api.unsendMessage(confirmMsgID);
+        return api.sendMessage(`Prefix reset successful.\nThis group is now using the system prefix: ${config.bot.prefix}`, threadID, messageID);
+      } else if (body.toLowerCase() === 'n') {
+        await api.unsendMessage(confirmMsgID);
+        return api.sendMessage("Reset cancelled.", threadID, messageID);
+      }
+    }
+
+    if (type === "resetall_confirm") {
+      if (body.toLowerCase() === 'y') {
+        saveGroupPrefixes({});
+        await api.unsendMessage(confirmMsgID);
+        return api.sendMessage(`All group prefixes have been reset to system default: ${config.bot.prefix}`, threadID, messageID);
+      } else if (body.toLowerCase() === 'n') {
+        await api.unsendMessage(confirmMsgID);
+        return api.sendMessage("Reset cancelled.", threadID, messageID);
+      }
+    }
+  }
+};
