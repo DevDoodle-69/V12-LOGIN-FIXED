@@ -1,1 +1,120 @@
-const axios = require("axios"); const FormData = require("form-data"); const fs = require("fs"); const path = require("path"); const sharp = require("sharp"); const imgbbApiKey = "1b4d99fa0c3195efe42ceb62670f2a25"; const infipApiKey = "infip-2b963118"; module.exports = { config: { name: "edit", aliases: [], version: "3.0", author: "NZ R", countDown: 5, role: 0, shortDescription: { en: "Smart AI Image Edit" }, longDescription: { en: "Reply to an image with a prompt to edit it with auto aspect ratio" }, category: "Media", guide: { en: "Reply to an image with: edit <prompt>" } }, async onStart({ api, event, args }) { const { threadID, messageID, messageReply, attachments } = event; let imagePath; const tempDir = path.join(__dirname, "../../temp"); if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true }); if (messageReply?.attachments?.length > 0) { const url = messageReply.attachments[0].url; imagePath = path.join(tempDir, `reply_img_${Date.now()}.jpg`); const res = await axios.get(url, { responseType: "arraybuffer" }); fs.writeFileSync(imagePath, res.data); } else if (attachments?.length > 0) { const url = attachments[0].url; imagePath = path.join(tempDir, `attached_img_${Date.now()}.jpg`); const res = await axios.get(url, { responseType: "arraybuffer" }); fs.writeFileSync(imagePath, res.data); } else { return api.sendMessage("Reply to an image or attach one.", threadID, messageID); } try { const prompt = args.join(" "); if (!prompt) return api.sendMessage("Provide a prompt.", threadID, messageID); const metadata = await sharp(imagePath).metadata(); const width = metadata.width; const height = metadata.height; let aspect = "square"; if (width && height) { const ratio = width / height; if (ratio > 1.2) aspect = "landscape"; else if (ratio < 0.8) aspect = "portrait"; else aspect = "square"; } const formData = new FormData(); formData.append("image", fs.createReadStream(imagePath)); const uploadRes = await axios.post("https://api.imgbb.com/1/upload", formData, { headers: formData.getHeaders(), params: { key: imgbbApiKey } }); const imageUrl = uploadRes.data?.data?.url; if (!imageUrl) return api.sendMessage("Image upload failed.", threadID, messageID); const generateRes = await axios.post( "https://api.infip.pro/v1/images/generations", { model: "flux2-klein-9b", prompt: prompt, images: [imageUrl], aspect: aspect, response_format: "url" }, { headers: { Authorization: `Bearer ${infipApiKey}`, "Content-Type": "application/json" } } ); const resultUrl = generateRes.data?.data?.[0]?.url; if (!resultUrl) return api.sendMessage("Image generation failed.", threadID, messageID); const resultPath = path.join(tempDir, `result_${Date.now()}.jpg`); const imgResponse = await axios.get(resultUrl, { responseType: "arraybuffer" }); fs.writeFileSync(resultPath, imgResponse.data); api.sendMessage( { attachment: fs.createReadStream(resultPath) }, threadID, () => { fs.unlinkSync(resultPath); }, messageID ); } catch (error) { api.sendMessage(`Error: ${error.message}`, threadID, messageID); } finally { if (imagePath && fs.existsSync(imagePath)) fs.unlinkSync(imagePath); } } };
+const axios = require("axios");
+const FormData = require("form-data");
+const fs = require("fs");
+const path = require("path");
+
+const imgbbApiKey = "1b4d99fa0c3195efe42ceb62670f2a25";
+const supabaseUrl = "https://gjosebfngzowbcrwzxnw.supabase.co/functions/v1/openai-compatible";
+const supabaseAuth = "Bearer nb_SBa89oD7xBbHSrwJKny3acDF6kRFuPBNgF2BEEDTdnRGMyBe";
+
+module.exports = {
+  config: {
+    name: "edit",
+    aliases: [],
+    version: "1.0",
+    author: "NZ R",
+    countDown: 5,
+    role: 0,
+    shortDescription: {
+      en: "Edit image by removing text"
+    },
+    longDescription: {
+      en: "Remove all text from an image using AI"
+    },
+    category: "IMAGE",
+    guide: {
+      en: "Reply to an image with {prefix}edit <prompt>"
+    }
+  },
+
+  async onStart({ api, event, args }) {
+    const { threadID, messageID, messageReply } = event;
+
+    if (!messageReply || !messageReply.attachments || messageReply.attachments.length === 0) {
+      return api.sendMessage("Please reply to an image", threadID, messageID);
+    }
+
+    const prompt = args.length > 0 ? args.join(" ") : "remove all the text from that image";
+
+    try {
+      const imageUrl = messageReply.attachments[0].url;
+      
+      const loadingMsg = await api.sendMessage("Processing image...", threadID, messageID);
+
+      const imgbbUrl = await uploadToImgbb(imageUrl);
+      const result = await callSupabaseAPI(imgbbUrl, prompt);
+
+      if (result.error) {
+        api.unsendMessage(loadingMsg.messageID);
+        return api.sendMessage(`Error: ${result.error}`, threadID, messageID);
+      }
+
+      const imageBuffer = Buffer.from(result, "base64");
+      const imagePath = path.join(__dirname, `../../temp/edit_${Date.now()}.png`);
+      const tempDir = path.dirname(imagePath);
+
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      fs.writeFileSync(imagePath, imageBuffer);
+
+      const stream = fs.createReadStream(imagePath);
+      await api.sendMessage({ attachment: stream }, threadID, messageID);
+
+      api.unsendMessage(loadingMsg.messageID);
+
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+    } catch (err) {
+      api.sendMessage(`Error: ${err.message}`, threadID, messageID);
+    }
+  },
+
+  handleReply: async () => {}
+};
+
+async function uploadToImgbb(imageUrl) {
+  try {
+    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    const formData = new FormData();
+    formData.append("image", Buffer.from(response.data), "image.jpg");
+
+    const uploadRes = await axios.post("https://api.imgbb.com/1/upload", formData, {
+      headers: formData.getHeaders(),
+      params: { key: imgbbApiKey }
+    });
+
+    return uploadRes.data?.data?.url;
+  } catch (err) {
+    throw new Error(`Failed to upload image to ImgBB: ${err.message}`);
+  }
+}
+
+async function callSupabaseAPI(imageUrl, prompt) {
+  try {
+    const response = await axios.post(
+      supabaseUrl,
+      {
+        model: "gemini-3.1-pro-preview",
+        prompt: prompt,
+        images: [imageUrl]
+      },
+      {
+        headers: {
+          Authorization: supabaseAuth,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    if (response.data && response.data.image) {
+      return response.data.image;
+    }
+
+    throw new Error("No image in response");
+  } catch (err) {
+    throw new Error(`API call failed: ${err.message}`);
+  }
+}

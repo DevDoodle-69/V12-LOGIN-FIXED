@@ -119,7 +119,7 @@ module.exports = {
     try {
       const requests = [];
       for (let i = 0; i < num; i++) {
-        requests.push(axios.post("https://api-reverse-engineering.kines966176.workers.dev/v1/images/generations", {
+        requests.push(axios.post("http://nano-banana-2-yaya.onrender.com/v1/images/generations", {
           model: "gemini-3-pro-image-preview",
           prompt: text,
           n: 1,
@@ -130,7 +130,7 @@ module.exports = {
           negative_prompt: "blurry, low quality, distorted, ugly, deformed",
           contents: [{ role: "user", parts: [{ text: `${style}, realistic, ${text}` }] }]
         }, {
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer sk-9661" }
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer sk-nzr-v12" }
         }));
       }
 
