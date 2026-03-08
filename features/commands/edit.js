@@ -105,15 +105,32 @@ async function callSupabaseAPI(imageUrl, prompt) {
         headers: {
           Authorization: supabaseAuth,
           "Content-Type": "application/json"
-        }
+        },
+        timeout: 120000
       }
     );
 
-    if (response.data && response.data.image) {
-      return response.data.image;
+    let imageData = null;
+
+    if (response.data && typeof response.data === "string" && response.data.includes(",")) {
+      imageData = response.data.split(",")[1] || response.data;
+    } else if (response.data && response.data.image) {
+      imageData = response.data.image;
+    } else if (response.data && response.data.result) {
+      imageData = response.data.result;
+    } else if (response.data && response.data.output) {
+      imageData = response.data.output;
+    } else if (response.data && response.data.data) {
+      imageData = response.data.data;
+    } else if (typeof response.data === "string") {
+      imageData = response.data;
     }
 
-    throw new Error("No image in response");
+    if (!imageData) {
+      throw new Error(`Unexpected response structure: ${JSON.stringify(response.data).substring(0, 200)}`);
+    }
+
+    return imageData;
   } catch (err) {
     throw new Error(`API call failed: ${err.message}`);
   }
