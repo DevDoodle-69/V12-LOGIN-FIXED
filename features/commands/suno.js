@@ -28,7 +28,7 @@ module.exports = {
   config: {
     name: "suno",
     aliases: [],
-    version: "1.5",
+    version: "1.4",
     author: "NZ R",
     countDown: 5,
     role: 0,
@@ -198,7 +198,7 @@ module.exports = {
           return api.sendMessage("Timed out after 10 minutes or server error (524). Try again later.", threadID, messageID);
         }
       } else {
-        return api.sendMessage("API rejected request. Invalid response format.", threadID, messageID);
+        return api.sendMessage("API rejected request.", threadID, messageID);
       }
 
       // Process and send the records
@@ -206,17 +206,8 @@ module.exports = {
         for (let i = 0; i < taskData.records.length; i++) {
           const rec = taskData.records[i];
           const songId = rec.id;
-          const title = rec.title || "Untitled Song";
-          const duration = rec.duration ? `${rec.duration}s` : "Unknown duration";
 
-          // Send the song title and details
-          await api.sendMessage(
-            `Song: ${title}\nDuration: ${duration}\nLink: https://suno.com/song/${songId}`,
-            threadID,
-            messageID
-          );
-
-          // Download and send audio
+          // Send audio
           if (rec.audio_url) {
             try {
               const audioPath = path.join(__dirname, `suno_${songId}_audio.mp3`);
@@ -229,11 +220,10 @@ module.exports = {
               }
             } catch (e) {
               console.error("Error downloading/sending audio:", e);
-              await api.sendMessage(`Failed to download audio file for song ${songId}`, threadID, messageID);
             }
           }
 
-          // Download and send image
+          // Send image
           if (rec.image_url) {
             try {
               const imagePath = path.join(__dirname, `suno_${songId}_image.jpg`);
@@ -246,12 +236,16 @@ module.exports = {
               }
             } catch (e) {
               console.error("Error downloading/sending image:", e);
-              await api.sendMessage(`Failed to download cover image for song ${songId}`, threadID, messageID);
             }
           }
+
+          // Send URL
+          await api.sendMessage(
+            `https://suno.com/song/${songId}`,
+            threadID,
+            messageID
+          );
         }
-      } else {
-        return api.sendMessage("No records found in response.", threadID, messageID);
       }
     } catch (error) {
       const msg = error.response?.data?.message || error.message || "Unknown error";
