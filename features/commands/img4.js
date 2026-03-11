@@ -14,7 +14,7 @@ module.exports = {
     shortDescription: { en: "Weird AI art. Go wild." },
     longDescription: { en: "Spits out 4 cursed pics. Pick 1. That's it." },
     category: "AI",
-    guide: { en: "{prefix}img4 <prompt> --ar 16:9 | 1:1 | 9:16" }
+    guide: { en: "{prefix} c<prompt> --ar 16:9 | 1:1 | 9:16" }
   },
 
   async cleanupFiles(files) {
