@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# V12 FCA Bot Launcher Script
+# Simple command to start the bot
+
+clear
+echo "╔════════════════════════════════════════╗"
+echo "║   V12 FCA Robot - Starting System      ║"
+echo "║   Authenticating with v12-account.txt  ║"
+echo "╚════════════════════════════════════════╝"
+echo ""
+
+# Check if node_modules exists
+if [ ! -d "node_modules" ]; then
+    echo "📦 Installing dependencies..."
+    npm install
+    echo ""
+fi
+
+# Check if v12-account.txt exists
+if [ ! -f "v12-account.txt" ]; then
+    echo "⚠️  Warning: v12-account.txt not found"
+    echo "   The bot will attempt email/password login from config.json"
+    echo ""
+fi
+
+# Start the bot
+echo "🤖 Launching V12 FCA Robot..."
+echo ""
+node index.js
