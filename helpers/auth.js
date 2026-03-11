@@ -16,15 +16,15 @@ async function authenticate() {
         
         if (parsed.fbstate && Array.isArray(parsed.fbstate)) {
           appState = parsed.fbstate;
-          logger.info(`✓ Successfully loaded credentials from ${file} (fbstate format)`);
+          logger.info(`Successfully loaded credentials from ${file} (fbstate format)`);
         } else if (Array.isArray(parsed)) {
           appState = parsed;
-          logger.info(`✓ Successfully loaded credentials from ${file} (array format)`);
+          logger.info(`Successfully loaded credentials from ${file} (array format)`);
         }
         
         if (appState) {
           selectedFile = file;
-          logger.info(`📂 Active credentials file: ${file}`);
+          logger.info(`Active credentials file: ${file}`);
           break;
         }
       }

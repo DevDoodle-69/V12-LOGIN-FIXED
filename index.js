@@ -103,9 +103,9 @@ async function startBot() {
         logger.info('Initializing V12 FCA systems...');
         startTime = Date.now();
 
-        logger.info('🔐 Authenticating interface with v12-account.txt...');
+        logger.info('Authenticating interface with v12-account.txt...');
         const api = await authenticate();
-        if (!api) throw new Error('Authentication failed - check v12-account.txt or config.json credentials');
+        if (!api) throw new Error('Authentication failed - verify v12-account.txt or config.json credentials');
         apiInstance = api;
         api.setOptions({ listenEvents: true, selfListen: true, forceLogin: true, autoReconnect: true, logLevel: 'silent' });
         global.Meta = global.Meta || {};
