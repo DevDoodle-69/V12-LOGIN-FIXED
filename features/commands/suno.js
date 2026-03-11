@@ -211,7 +211,7 @@ module.exports = {
 
           // Send the song title and details
           await api.sendMessage(
-            `🎵 ${title}\n⏱️ Duration: ${duration}\n🔗 https://suno.com/song/${songId}`,
+            `Song: ${title}\nDuration: ${duration}\nLink: https://suno.com/song/${songId}`,
             threadID,
             messageID
           );
@@ -229,7 +229,7 @@ module.exports = {
               }
             } catch (e) {
               console.error("Error downloading/sending audio:", e);
-              await api.sendMessage(`⚠️ Failed to download audio file for song ${songId}`, threadID, messageID);
+              await api.sendMessage(`Failed to download audio file for song ${songId}`, threadID, messageID);
             }
           }
 
@@ -246,7 +246,7 @@ module.exports = {
               }
             } catch (e) {
               console.error("Error downloading/sending image:", e);
-              await api.sendMessage(`⚠️ Failed to download cover image for song ${songId}`, threadID, messageID);
+              await api.sendMessage(`Failed to download cover image for song ${songId}`, threadID, messageID);
             }
           }
         }
@@ -255,7 +255,7 @@ module.exports = {
       }
     } catch (error) {
       const msg = error.response?.data?.message || error.message || "Unknown error";
-      api.sendMessage(`❌ Error: ${msg}`, threadID, messageID);
+      api.sendMessage(`Error: ${msg}`, threadID, messageID);
     }
   }
 };
