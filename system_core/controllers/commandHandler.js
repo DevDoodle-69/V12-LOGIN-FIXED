@@ -30,12 +30,12 @@ class CommandHandler {
             const botSettingsCollection = this.db.collection('botSettings');
             const settings = await botSettingsCollection.findOne({});
             if (settings) {
-                global.Meta.whitelistMode = false; // Force whitelist off by default
+                global.Meta.whitelistMode = settings.whitelistMode !== undefined ? settings.whitelistMode : true;
                 if (settings.whitelist) {
                     this.whitelist = new Set(settings.whitelist);
                 }
             } else {
-                global.Meta.whitelistMode = false;
+                global.Meta.whitelistMode = true;
             }
         }
     }
