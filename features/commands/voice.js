@@ -90,7 +90,7 @@ module.exports = {
     const input = args.join(" ").trim();
 
     if (!input || input.toLowerCase() === "list") {
-      const list = VOICES.map(v => `${v.name} (${v.language})`).join("\n");
+      const list = VOICES.map(v => `• ${v.name}`).join("\n");
       return api.sendMessage("Available voices:\n\n" + list, threadID, messageID);
     }
 
