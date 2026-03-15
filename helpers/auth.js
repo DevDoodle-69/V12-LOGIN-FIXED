@@ -13,7 +13,7 @@ async function authenticate() {
       if (fs.existsSync(file)) {
         const content = fs.readFileSync(file, 'utf8');
         const parsed = JSON.parse(content);
-        
+
         if (parsed.fbstate && Array.isArray(parsed.fbstate)) {
           appState = parsed.fbstate;
           logger.info(`Successfully loaded credentials from ${file} (fbstate format)`);
@@ -21,7 +21,7 @@ async function authenticate() {
           appState = parsed;
           logger.info(`Successfully loaded credentials from ${file} (array format)`);
         }
-        
+
         if (appState) {
           selectedFile = file;
           logger.info(`Active credentials file: ${file}`);
@@ -41,7 +41,7 @@ async function authenticate() {
 
   const options = {
     forceLogin: config.bot.forceLogin,
-    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
   };
 
   return new Promise((resolve) => {
@@ -51,7 +51,7 @@ async function authenticate() {
         resolve(null);
         return;
       }
-      
+
       try {
         const newState = api.getAppState();
         if (selectedFile === 'v12-account.txt' || selectedFile === 'v12-account-v2.txt') {
@@ -69,9 +69,9 @@ async function authenticate() {
       } catch (e) {
         logger.warn(`Failed to save refreshed appstate to ${selectedFile}: ${e.message}`);
       }
-      
+
       logger.info('Authenticated successfully');
-      resolve(api);
+      resolve({ api, selectedFile });
     });
   });
 }
