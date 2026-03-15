@@ -3,6 +3,39 @@
 ## Overview
 V12 FCA is a Node.js-based Facebook Messenger chatbot using a custom Facebook Chat API (V12-FCA) implementation. The bot supports command-based interactions, event listening, database persistence, and media processing.
 
+## V12-FCA Core — Upgraded Architecture (v12.0.0)
+
+### V12-FCA/index.js
+Completely restructured with a modular class-based architecture:
+- **RateLimiter** — Prevents API flood with sliding window request limits
+- **DeviceRegistry** — 15 real Android device profiles (Pixel, Samsung, OnePlus, Xiaomi, OPPO, vivo, Motorola, realme), persistent device profile across sessions, automatic device rotation support
+- **SessionStore** — Appstate load/save with cookie expiry auto-fix, backup rotation (keeps last 5), credential file loading, validity checks
+- **AuthEngine** — Handles direct login, 2FA-TOTP, structured error codes, rate-limited requests, proxy support, proper form signing
+- **ConnectionManager** (EventEmitter) — Orchestrates login flow: cached session → credentials → fresh auth
+- **buildAPIContext** — Extracts fb_dtsg, irisSeqID, userID, mqttEndpoint, revision, locale from HTML using multiple fallback patterns
+- **buildAPI** — Assembles full API + loads all src modules with error isolation per module
+- **login()** — Async/promise-compatible main export with full error messaging
+- Exports: `login`, `login.getVersion()`, `login.getName()`, `DeviceRegistry`, `SessionStore`, `AuthEngine`, `ConnectionManager`, `RateLimiter`
+
+### V12-FCA/utils.js
+Completely restructured into a modular IIFE-based architecture (1100+ lines of clean, comment-free code):
+- **NetworkClient** (IIFE) — `get`, `post`, `postFormData`, `setProxy`, `buildHeaders` with full browser-like headers, retry-with-jitter wrapper, configurable timeout
+- **EncodingEngine** (IIFE) — Presence encode/decode, GUID, threading IDs, offline threading IDs, session IDs, UUID, HSI, request IDs, serialized state, client mutation IDs
+- **IDProcessor** — `format()`, `padZeros()`
+- **AttachmentProcessor** (IIFE) — All 15 attachment types handled via dispatch table (sticker, file, photo, animated_image, share, video, audio, MessageImage, MessageAnimatedImage, MessageVideo, MessageAudio, StickerAttachment, MessageLocation, ExtensibleAttachment, MessageFile)
+- **MessageFormatter** (IIFE) — `formatDeltaMessage`, `formatMessage`, `formatEvent`, `formatHistoryMessage`, `formatDeltaEvent`, `formatTyp`, `formatReadReceipt`, `formatRead`, `getAdminTextType`
+- **ThreadFormatter** — `format()`
+- **PresenceFormatter** — `formatProxy()`, `format()`
+- **CookieEngine** — `format()`, `save()`, `getAppState()`
+- **DataAccessor** — `get()`, `set()`, `paths()` (replaces getData_Path / setData_Path / getPaths)
+- **HTMLProcessor** — `makeParsable()`, `getFrom()`, `cleanHTML()`, `decodeClientPayload()`
+- **FormUtils** — `arrToForm()`, `arrayToObject()`
+- **TimeUtils** — `formatDate()`, `generateTimestampRelative()`
+- **GenderDetector** (IIFE) — Uses a `Set` for O(1) lookup of 700+ Vietnamese female names
+- **makeDefaults** — Multi-pattern fb_dtsg extraction fallback, atomic request counter
+- **parseAndCheckLogin** — Exponential backoff retry (up to 5x), DTSG token refresh, cookie injection, session expiry detection
+- **53 total named exports** all verified working
+
 ## Quick Start
 
 ### Running the Bot
