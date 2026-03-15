@@ -403,7 +403,7 @@ class ConnectionManager extends EventEmitter {
                 return { success: true, appstate: cached, method: 'Cache' };
             }
         }
-
+this
         const credentials = {
             username: loginData.email || loginData.username,
             password: loginData.password,
@@ -431,21 +431,47 @@ function buildAPIContext(globalOptions, html, jar) {
     };
 
     const fb_dtsg = extractToken([
+        /"DTSGInitialData",\[\],{"token":"([^"]+)"}/,
         /"DTSGInitialData",\[\],\{"token":"([^"]+)"\}/,
+        /"fb_dtsg"\s*:\s*"([^"]+)"/,
         /"fb_dtsg":"([^"]+)"/,
-        /name="fb_dtsg" value="([^"]+)"/
+        /name="fb_dtsg"\s+value="([^"]+)"/,
+        /name="fb_dtsg" value="([^"]+)"/,
+        /"token":"([^"]+)","ttl":/,
+        /\["DTSGInitialData"\s*,\s*\[\s*\]\s*,\s*\{\s*"token"\s*:\s*"([^"]+)"/
     ], html);
 
     const irisSeqID = extractToken([
         /"irisSeqID":"([^"]+)"/,
-        /"seq_num":([0-9]+)/
+        /"seq_num":([0-9]+)/,
+        /"IrisSeqID":([0-9]+)/
     ], html);
 
     const allCookies = jar.getCookies("https://www.facebook.com");
-    const userID = allCookies.find(c => c.key === "c_user")?.value;
-    const locale = allCookies.find(c => c.key === "locale")?.value || "en_US";
+    const allCookiesFb = jar.getCookies("https://facebook.com");
+    const findCookie = (name) =>
+        allCookies.find(c => c.key === name)?.value ||
+        allCookiesFb.find(c => c.key === name)?.value;
 
-    if (!fb_dtsg || !userID) return null;
+    let userID = findCookie("c_user");
+    if (!userID) {
+        userID = extractToken([
+            /"USER_ID":"([^"]+)"/,
+            /"userID":"([^"]+)"/,
+            /"user_id":"([^"]+)"/,
+            /"actorID":"([^"]+)"/,
+            /"uid":([0-9]+)/,
+            /"UID":"([^"]+)"/
+        ], html);
+    }
+
+    const locale = findCookie("locale") || extractToken([/"locale":"([^"]+)"/], html) || "en_US";
+
+    if (!fb_dtsg || !userID) {
+        TERMINAL.warn(`Token extraction — fb_dtsg: ${fb_dtsg ? 'found' : 'missing'}, userID: ${userID ? 'found' : 'missing'}`);
+        TERMINAL.warn(`Response preview: ${html.slice(0, 300).replace(/\n/g, ' ')}`);
+        return null;
+    }
 
     const mqttEndpoint = extractToken([/"endpoint":"([^"]+)"/], html)?.replace(/\\/g, '') || null;
     const revision = extractToken([/\["revision"\]:\s*([0-9]+)/, /"client_revision":([0-9]+)/], html);
@@ -531,13 +557,17 @@ async function login(loginData, options, callback) {
         const jar = utils.getJar();
 
         auth.appstate.forEach(c => {
-            const domain = (c.domain || '.facebook.com').replace(/^\./, '');
-            const expiry = c.expires || new Date(Date.now() + 365 * 864e5).toUTCString();
-            const cookieStr = `${c.key}=${c.value}; expires=${expiry}; domain=.${domain}; path=${c.path || '/'}; Secure`;
-            try {
-                jar.setCookie(cookieStr, `https://${domain}`);
-                jar.setCookie(cookieStr.replace(`.${domain}`, '.messenger.com'), 'https://messenger.com');
-            } catch (_) {}
+            const key = c.key || c.name;
+            const val = c.value;
+            if (!key || val === undefined || val === null) return;
+            const rawDomain = c.domain || 'facebook.com';
+            const cleanDomain = rawDomain.replace(/^\./, '');
+            const expiry = (c.expires && c.expires !== 'undefined')
+                ? c.expires
+                : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+            const cookieStr = `${key}=${val}; expires=${expiry}; domain=.${cleanDomain}; path=${c.path || '/'}`;
+            try { jar.setCookie(cookieStr, `https://${cleanDomain}`); } catch (_) {}
+            try { jar.setCookie(cookieStr, `https://www.${cleanDomain}`); } catch (_) {}
         });
 
         TERMINAL.step(`Session loaded [${auth.method}]`);
@@ -545,10 +575,12 @@ async function login(loginData, options, callback) {
         const res = await utils.get(META.home, jar, null, globalOptions);
 
         if (!res?.body) throw new Error("EMPTY_RESPONSE");
-        if (res.body.includes("/checkpoint/block/")) throw new Error("CHECKPOINT_LOCKED");
-        if (res.body.includes("/login/?") && !res.body.includes("c_user")) throw new Error("SESSION_EXPIRED");
+        const body = res.body;
+        if (body.includes("/checkpoint/block/")) throw new Error("CHECKPOINT_LOCKED — Account security check required");
+        if (body.includes("login_form") && body.includes("email") && body.includes("pass") && !body.includes("c_user")) throw new Error("SESSION_EXPIRED — Session cookies are no longer valid");
+        if (body.includes("/login/") && body.length < 15000) throw new Error("SESSION_EXPIRED — Redirected to login page");
 
-        const built = buildAPI(globalOptions, res.body, jar);
+        const built = buildAPI(globalOptions, body, jar);
         if (!built) throw new Error("API_BUILD_FAILED — Could not extract session tokens from Facebook response");
 
         TERMINAL.ok(`Connected as UID: ${chalk.bold.cyan(built.ctx.userID)}`);

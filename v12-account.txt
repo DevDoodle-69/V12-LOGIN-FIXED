@@ -2,7 +2,7 @@
   "metadata": {
     "extractor": "NZ R Ultimate Cookie Extractor",
     "version": "3.0.0",
-    "timestamp": "2026-03-15T12:26:25.016Z",
+    "timestamp": "2026-03-15T12:33:11.211Z",
     "sessionId": "nzr_19cf1764179_437aed1a",
     "platform": "Chrome Extension",
     "cookieCount": 6,
@@ -12,94 +12,136 @@
   },
   "fbstate": [
     {
-      "id": "nzr_0000",
       "key": "sb",
       "value": "wwBIaG21dDcx2FYbvdnt1Xv1",
+      "expires": "2027-03-15T12:33:07.000Z",
       "domain": "facebook.com",
       "path": "/",
       "hostOnly": false,
-      "creation": "2026-03-15T12:26:25.016Z",
-      "lastAccessed": "2026-03-15T12:26:25.016Z",
-      "secure": true,
-      "httpOnly": true,
-      "sameSite": "no_restriction",
-      "hash": "h50e4ac83",
-      "signature": "sig_c2J3d0JJYUcy"
+      "creation": "2026-03-15T12:33:07.219Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
     },
     {
-      "id": "nzr_0001",
       "key": "datr",
       "value": "G9gxaUEC7wQe7AOglBAxD_dF",
+      "expires": "2027-03-15T12:33:07.000Z",
       "domain": "facebook.com",
       "path": "/",
       "hostOnly": false,
-      "creation": "2026-03-15T12:26:25.016Z",
-      "lastAccessed": "2026-03-15T12:26:25.016Z",
-      "secure": true,
-      "httpOnly": true,
-      "sameSite": "no_restriction",
-      "hash": "h4ba34fd0",
-      "signature": "sig_ZGF0ckc5Z3hh"
+      "creation": "2026-03-15T12:33:07.223Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
     },
     {
-      "id": "nzr_0002",
       "key": "c_user",
       "value": "100091084029785",
+      "expires": "2027-03-15T12:33:07.000Z",
       "domain": "facebook.com",
       "path": "/",
       "hostOnly": false,
-      "creation": "2026-03-15T12:26:25.016Z",
-      "lastAccessed": "2026-03-15T12:26:25.016Z",
-      "secure": true,
-      "httpOnly": false,
-      "sameSite": "no_restriction",
-      "hash": "h605b6d15",
-      "signature": "sig_Y191c2VyMTAw"
+      "creation": "2026-03-15T12:33:07.225Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
     },
     {
-      "id": "nzr_0003",
       "key": "wd",
       "value": "1048x2066",
+      "expires": "2027-03-15T12:33:07.000Z",
       "domain": "facebook.com",
       "path": "/",
       "hostOnly": false,
-      "creation": "2026-03-15T12:26:25.016Z",
-      "lastAccessed": "2026-03-15T12:26:25.016Z",
-      "secure": true,
-      "httpOnly": false,
-      "sameSite": "lax",
-      "hash": "h5ca9293a",
-      "signature": "sig_d2QxMDQ4eDIw"
+      "creation": "2026-03-15T12:33:07.225Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
     },
     {
-      "id": "nzr_0004",
       "key": "fr",
-      "value": "1qEpaP0jSnSHlXFmb.AWcAkGAGKzf_-1QWITwbFvjSRm9MjTX_sP_yYT2G7wvXIdoU6Kc.BptqVu..AAA.0.0.BptqVu.AWeIZj2dJ6ioS2mB8I-tQ2vXQ3E",
+      "value": "1qEpaP0jSnSHlXFmb.AWdbAzKjGB1FjVDkhaClQHL7FJY9wAt9gSdekp32Fws4vlFoa2I.BptqVu..AAA.0.0.BptqcD.AWdFOwzghwBgxBOqXW9Kj_Gs3p0",
+      "expires": "2026-06-13T12:33:07.000Z",
+      "maxAge": 7776000,
       "domain": "facebook.com",
       "path": "/",
-      "hostOnly": false,
-      "creation": "2026-03-15T12:26:25.016Z",
-      "lastAccessed": "2026-03-15T12:26:25.016Z",
       "secure": true,
       "httpOnly": true,
-      "sameSite": "no_restriction",
-      "hash": "h2502459b",
-      "signature": "sig_ZnIxcUVwYVAw"
+      "extensions": [
+        "SameSite=None"
+      ],
+      "hostOnly": false,
+      "creation": "2026-03-15T12:33:07.225Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
     },
     {
-      "id": "nzr_0005",
       "key": "xs",
       "value": "37%3AWx_DPOegOZzMqQ%3A2%3A1773479352%3A-1%3A-1%3A%3AAcwnhX1yaNZ8q2jj6tYqW0Z1OOewuqK-tyEQQTTz4A",
+      "expires": "2027-03-15T12:33:07.000Z",
       "domain": "facebook.com",
       "path": "/",
       "hostOnly": false,
-      "creation": "2026-03-15T12:26:25.016Z",
-      "lastAccessed": "2026-03-15T12:26:25.016Z",
+      "creation": "2026-03-15T12:33:07.226Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
+    },
+    {
+      "key": "sb",
+      "value": "wwBIaG21dDcx2FYbvdnt1Xv1",
+      "expires": "2027-03-15T12:33:07.000Z",
+      "domain": "facebook.com",
+      "path": "/",
+      "hostOnly": false,
+      "creation": "2026-03-15T12:33:07.219Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
+    },
+    {
+      "key": "datr",
+      "value": "G9gxaUEC7wQe7AOglBAxD_dF",
+      "expires": "2027-03-15T12:33:07.000Z",
+      "domain": "facebook.com",
+      "path": "/",
+      "hostOnly": false,
+      "creation": "2026-03-15T12:33:07.223Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
+    },
+    {
+      "key": "c_user",
+      "value": "100091084029785",
+      "expires": "2027-03-15T12:33:07.000Z",
+      "domain": "facebook.com",
+      "path": "/",
+      "hostOnly": false,
+      "creation": "2026-03-15T12:33:07.225Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
+    },
+    {
+      "key": "wd",
+      "value": "1048x2066",
+      "expires": "2027-03-15T12:33:07.000Z",
+      "domain": "facebook.com",
+      "path": "/",
+      "hostOnly": false,
+      "creation": "2026-03-15T12:33:07.225Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
+    },
+    {
+      "key": "fr",
+      "value": "1qEpaP0jSnSHlXFmb.AWdbAzKjGB1FjVDkhaClQHL7FJY9wAt9gSdekp32Fws4vlFoa2I.BptqVu..AAA.0.0.BptqcD.AWdFOwzghwBgxBOqXW9Kj_Gs3p0",
+      "expires": "2026-06-13T12:33:07.000Z",
+      "maxAge": 7776000,
+      "domain": "facebook.com",
+      "path": "/",
       "secure": true,
       "httpOnly": true,
-      "sameSite": "no_restriction",
-      "hash": "h68e440d1",
-      "signature": "sig_eHMzNyUzQVd4"
+      "extensions": [
+        "SameSite=None"
+      ],
+      "hostOnly": false,
+      "creation": "2026-03-15T12:33:07.225Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
+    },
+    {
+      "key": "xs",
+      "value": "37%3AWx_DPOegOZzMqQ%3A2%3A1773479352%3A-1%3A-1%3A%3AAcwnhX1yaNZ8q2jj6tYqW0Z1OOewuqK-tyEQQTTz4A",
+      "expires": "2027-03-15T12:33:07.000Z",
+      "domain": "facebook.com",
+      "path": "/",
+      "hostOnly": false,
+      "creation": "2026-03-15T12:33:07.226Z",
+      "lastAccessed": "2026-03-15T12:33:11.211Z"
     }
   ],
   "security": {
