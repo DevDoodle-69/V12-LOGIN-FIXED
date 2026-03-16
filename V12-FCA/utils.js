@@ -2,7 +2,7 @@
 
 const urlModule = require("url");
 const stream = require("stream");
-const bluebird = require("bluebird");
+const nodeUtil = require("util");
 const querystring = require("querystring");
 const crypto = require("crypto");
 
@@ -13,10 +13,10 @@ const NetworkClient = (() => {
         return defaults;
     };
 
-    let _request = bluebird.promisify(require("request").defaults(buildRequestDefaults(null)));
+    let _request = nodeUtil.promisify(require("request").defaults(buildRequestDefaults(null)));
 
     const setProxy = (url) => {
-        _request = bluebird.promisify(require("request").defaults(buildRequestDefaults(url)));
+        _request = nodeUtil.promisify(require("request").defaults(buildRequestDefaults(url)));
         return _request;
     };
 
@@ -975,7 +975,7 @@ function makeDefaults(html, userID, ctx) {
 function parseAndCheckLogin(ctx, defaultFuncs, retryCount) {
     if (retryCount === undefined) retryCount = 0;
     return function(data) {
-        return bluebird.try(function() {
+        return Promise.resolve().then(function() {
             if (data.statusCode >= 500 && data.statusCode < 600) {
                 if (retryCount >= 5) {
                     throw {
@@ -988,7 +988,7 @@ function parseAndCheckLogin(ctx, defaultFuncs, retryCount) {
                 const retryDelay = Math.floor(Math.random() * 5000) + (retryCount * 1000);
                 const url = data.request.uri.protocol + "//" + data.request.uri.hostname + data.request.uri.pathname;
                 const isMultipart = data.request.headers["Content-Type"]?.split(";")?.[0] === "multipart/form-data";
-                return bluebird.delay(retryDelay).then(() => {
+                return new Promise(r => setTimeout(r, retryDelay)).then(() => {
                     return isMultipart
                         ? defaultFuncs.postFormData(url, ctx.jar, data.request.formData, {})
                         : defaultFuncs.post(url, ctx.jar, data.request.formData);

@@ -2,7 +2,6 @@
 
 var utils = require("../utils");
 var log = require("npmlog");
-var bluebird = require("bluebird");
 
 module.exports = function (defaultFuncs, api, ctx) {
   function handleUpload(image, callback) {
@@ -25,8 +24,7 @@ module.exports = function (defaultFuncs, api, ctx) {
     );
 
     // resolve all promises
-    bluebird
-      .all(uploads)
+    Promise.all(uploads)
       .then(resData => callback(null, resData))
       .catch(function (err) {
         log.error("handleUpload", err);
