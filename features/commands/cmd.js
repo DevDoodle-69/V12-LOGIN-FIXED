@@ -2,9 +2,9 @@ const fs = require("fs");
 const path = require("path");  
 const axios = require("axios");  
 
-const GITHUB_USERNAME = "SyntaxError404-dev";  
-const GITHUB_REPO = "V12-NZ-R";  
-const GITHUB_TOKEN = "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";  
+const GITHUB_USERNAME = "DevDoodle-69";  
+const GITHUB_REPO = "V12-LOGIN-FIXED";  
+const GITHUB_TOKEN = "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";  
 
 module.exports = {
   config: {
@@ -173,7 +173,7 @@ module.exports = {
 
     const fileName = validateFileName(args[1] || "");  
     const filePath = path.join(commandPath, fileName);  
-    const repoFilePath = `modules/commands/${fileName}`;  
+    const repoFilePath = `features/commands/${fileName}`;  
 
     if (sub === "file") {  
       if (!fs.existsSync(filePath)) return api.sendMessage(`File '${fileName}' not found`, threadID, messageID);  
