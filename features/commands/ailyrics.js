@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-const API_KEY = "sk-paxsenix-Wb6nXF-6jiNjPjMJYFbawnfbED0_xY_baG0wyLTERmPLGU7H";
+const API_KEY = "sk-paxsenix-hVFiVVgGBahLnkgn62QGYQCArEXZRFYDF0C3hDFcEDZGZjKU";
 
 async function callGrok(userText, systemPrompt) {
     try {

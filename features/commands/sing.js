@@ -7,7 +7,7 @@ const yts = require("yt-search");
 const DOWNLOAD_API = "https://fgsi.dpdns.org/api/downloader/youtube/v2";
 const DOWNLOAD_KEY = "fgsiapi-2affc76f-6d";
 const RECOGNIZE_API = "https://api.paxsenix.org/tools/shazam";
-const RECOGNIZE_AUTH = "Bearer sk-paxsenix-Tjc1kgE9keNVFcoHEhINEQZcl9EnzyXNg8oe72834wIbaMOX";
+const RECOGNIZE_AUTH = "Bearer sk-paxsenix-hVFiVVgGBahLnkgn62QGYQCArEXZRFYDF0C3hDFcEDZGZjKU";
 const TEMP_DIR = path.join(__dirname, "../../temp_sing");
 
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });

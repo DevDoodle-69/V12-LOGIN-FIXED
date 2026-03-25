@@ -2,7 +2,7 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
-const API_KEY = "sk-paxsenix-Wb6nXF-6jiNjPjMJYFbawnfbED0_xY_baG0wyLTERmPLGU7H";
+const API_KEY = "sk-paxsenix-hVFiVVgGBahLnkgn62QGYQCArEXZRFYDF0C3hDFcEDZGZjKU";
 const SUNO_API = "https://api.paxsenix.org/ai-music/suno-music/v3";
 
 const MODELS = ["V3", "V3_5", "V4", "V4_5", "V4_5PLUS", "V5"];

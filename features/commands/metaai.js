@@ -36,7 +36,7 @@ function formatBoldText(text) {
   };
   return text.replace(/(\*\*|")([^"*]+)(\*\*|")/g, (_, __, word) => word.split("").map(c => map[c] || c).join(""));
 }
-const API_KEY = "sk-paxsenix-Wb6nXF-6jiNjPjMJYFbawnfbED0_xY_baG0wyLTERmPLGU7H";
+const API_KEY = "sk-paxsenix-hVFiVVgGBahLnkgn62QGYQCArEXZRFYDF0C3hDFcEDZGZjKU";
 async function callMetaAI(text) {
   try {
     const { data } = await axios.get(
