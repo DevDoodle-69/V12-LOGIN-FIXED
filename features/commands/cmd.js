@@ -4,7 +4,7 @@ const axios = require("axios");
 
 const GITHUB_USERNAME = "DevDoodle-69";  
 const GITHUB_REPO = "V12-LOGIN-FIXED";  
-const GITHUB_TOKEN = "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";  
+const GITHUB_TOKEN = "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";  
 
 module.exports = {
   config: {
